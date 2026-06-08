@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Panel - Fuel Monitor</title>
+  <style>
+    body { font-family: sans-serif; background: #f1f5f9; padding: 4px; margin: 20px; }
+    .admin-box { background: white; max-width: 600px; margin: 0 auto; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+    h2, h3 { color: #1e293b; }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
+    input, select { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 4px; }
+    button { background: #10b981; color: white; border: none; padding: 10px 15px; font-weight: bold; border-radius: 4px; cursor: pointer; width: 100%; }
+    button:hover { background: #059669; }
+    hr { margin: 25px 0; border: 0; border-top: 1px solid #e2e8f0; }
+  </style>
+</head>
+<body>
+  <div class="admin-box">
+    <h2>⛽ Admin Panel</h2>
+    <div class="form-group">
+      <label>Admin Password</label>
+      <input type="password" id="password" placeholder="စနစ်ပြင်ဆင်ရန် password ရိုက်ပါ">
+    </div>
+    <hr>
+    <h3>၁။ ဆိုင်အချက်အလက် ပြင်ဆင်ရန်</h3>
+    <div class="form-group"><label>ဆိုင်နာမည်</label><input type="text" id="st-name" value="Htoo Fuel Station"></div>
+    <div class="form-group"><label>ဆိုင်ခွဲ</label><input type="text" id="st-branch" value="ပြင်ဦးလွင်"></div>
+    <div class="form-group"><label>ဖုန်းနံပါတ်</label><input type="text" id="st-phone" value="09-123456789"></div>
+    <div class="form-group"><label>Logo URL (Image Link)</label><input type="text" id="st-logo" value="https://placehold.co/100x100/orange/white?text=HTOO"></div>
+    <button onclick="updateStation()">ဆိုင်အချက်အလက် သိမ်းဆည်းရန်</button>
+    <hr>
+    <h3>၂။ လက်မန်ဖြင့် တိုင်ကီစာရင်း ဝင်ပြင်ရန်</h3>
+    <div class="form-group">
+      <label>ရွေးချယ်မည့် Tank</label>
+      <select id="tank-select">
+        <option value="1">Tank 1</option><option value="2">Tank 2</option>
+        <option value="3">Tank 3</option><option value="4">Tank 4</option>
+        <option value="5">Tank 5</option><option value="6">Tank 6</option>
+      </select>
+    </div>
+    <div class="form-group"><label>အမြင့်ဆုံးဆံ့ဝင်အား (Max Capacity L)</label><input type="number" id="tank-max"></div>
+    <div class="form-group"><label>လက်ရှိဆီအမြင့် (CM) - မသိပါက N/A ဟုရေးပါ</label><input type="text" id="tank-cm"></div>
+    <div class="form-group"><label>လက်ရှိဆီပမာဏ (Liter)</label><input type="number" id="tank-liter"></div>
+    <button onclick="updateTankManual()" style="background:#2563eb;">Tank Data လက်မန်ပြင်ရန်</button>
+    <hr>
+    <h3>၃။ Excel (CSV) တင်ပြီး Auto Update လုပ်ရန်</h3>
+    <div class="form-group">
+      <label>ဘယ် Tank အတွက် ဖိုင်လဲ</label>
+      <select id="excel-tank-select">
+        <option value="1">Tank 1</option><option value="2">Tank 2</option>
+        <option value="3">Tank 3</option><option value="4">Tank 4</option>
+        <option value="5">Tank 5</option><option value="6">Tank 6</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Excel File ရွေးချယ်ပါ</label><input type="file" id="excel-file" accept=".xlsx, .xls, .csv"></div>
+    <button onclick="uploadExcel()" style="background:#f59e0b;">Excel တင်သွင်းရန်</button>
+  </div>
+
+  <script>
+    function updateStation() {
+      const password = document.getElementById('password').value;
+      const payload = {
+        password, name: document.getElementById('st-name').value,
+        branchName: document.getElementById('st-branch').value,
+        phoneNumber: document.getElementById('st-phone').value,
+        logoUrl: document.getElementById('st-logo').value
+      };
+      fetch('/api/admin/update-station', {
+        method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+      }).then(res => res.json()).then(data => alert(data.message));
+    }
+
+    function updateTankManual() {
+      const password = document.getElementById('password').value;
+      const payload = {
+        password, tankNumber: document.getElementById('tank-select').value,
+        maxCapacity: document.getElementById('tank-max').value,
+        currentCM: document.getElementById('tank-cm').value,
+        currentLiter: document.getElementById('tank-liter').value
+      };
+      fetch('/api/admin/update-tank', {
+        method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+      }).then(res => res.json()).then(data => alert(data.message));
+    }
+
+    function uploadExcel() {
+      const password = document.getElementById('password').value;
+      const tankNumber = document.getElementById('excel-tank-select').value;
+      const fileInput = document.getElementById('excel-file');
+      if(!fileInput.files[0]) return alert("ဖိုင်ရွေးချယ်ပေးပါ");
+
+      const formData = new FormData();
+      formData.append('password', password);
+      formData.append('tankNumber', tankNumber);
+      formData.append('excelFile', fileInput.files[0]);
+
+      fetch('/api/admin/upload-excel', { method: 'POST', body: formData })
+      .then(res => res.json()).then(data => alert(data.message));
+    }
+  </script>
+</body>
+</html>
