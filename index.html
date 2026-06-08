@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fuel Tank Real-time Monitor</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f1f5f9; margin: 0; padding: 0; }
+   
+    /* Header ပိုင်းကို စာလုံးမထပ်အောင် ရှင်းလင်းစွာ စီမံထားခြင်း */
+    .dashboard-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 30px; background: #ffffff; border-bottom: 2px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+    .header-left { display: flex; align-items: center; gap: 20px; }
+    .station-logo { width: 70px; height: 70px; object-fit: cover; border-radius: 10px; border: 2px solid #cbd5e1; }
+    .station-info { display: flex; flex-direction: column; justify-content: center; }
+    .station-info h1 { font-size: 26px; font-weight: 700; color: #1e293b; margin: 0 0 6px 0; line-height: 1.2; }
+    .station-sub-details { display: flex; align-items: center; gap: 15px; font-size: 14px; color: #64748b; font-weight: 500; }
+    .divider { color: #cbd5e1; font-weight: bold; }
+   
+    .btn-switch { background: #2563eb; color: white; border: none; padding: 12px 20px; font-weight: 600; font-size: 14px; border-radius: 8px; cursor: pointer; transition: background 0.2s; }
+    .btn-switch:hover { background: #1d4ed8; }
+   
+    .container { padding: 30px; max-width: 1300px; margin: 0 auto; }
+    .view-section { display: none; }
+    .view-section.active { display: block; }
+   
+    /* UI View Grid Style */
+    .tanks-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 30px; }
+    .tank-card { background: white; border-radius: 16px; padding: 25px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); text-align: center; border: 1px solid #e2e8f0; }
+    .tank-card h3 { margin: 0 0 15px 0; font-size: 18px; color: #334155; }
+   
+    /* တိုင်ကီပုံစံ အမြင်ရှင်းအောင် ပုံဖော်ခြင်း */
+    .tank-cylinder { width: 140px; height: 220px; border: 4px solid #1e293b; border-radius: 16px; position: relative; overflow: hidden; background: #f8fafc; margin: 20px auto; box-shadow: inset 0 0 15px rgba(0,0,0,0.1); }
+    .fuel-liquid { position: absolute; bottom: 0; width: 100%; transition: height 1s ease-out; display: flex; align-items: center; justify-content: center; }
+    .liter-text { color: white; font-weight: 800; font-size: 16px; text-shadow: 1px 1px 4px rgba(0,0,0,0.8); }
+   
+    .pct-badge { background: #f1f5f9; padding: 6px 14px; border-radius: 20px; font-weight: 700; color: #1e293b; display: inline-block; margin-top: 10px; }
+    .detail-text { font-size: 14px; color: #64748b; margin: 12px 0 0 0; line-height: 1.5; }
+   
+    /* List View Table Style */
+    .table-container { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 16px 20px; text-align: left; border-bottom: 1px solid #e2e8f0; font-size: 15px; }
+    th { background-color: #f8fafc; color: #475569; font-weight: 600; }
+    td { color: #334155; }
+    tr:last-child td { border-bottom: none; }
+  </style>
+</head>
+<body>
+
+  <header class="dashboard-header">
+    <div class="header-left">
+      <img id="station-logo" src="" alt="Station Logo" class="station-logo">
+      <div class="station-info">
+        <h1 id="station-name">Loading...</h1>
+        <div class="station-sub-details">
+          <span>ဆိုင်ခွဲ - <strong id="station-branch" style="color:#1e293b;">-</strong></span>
+          <span class="divider">|</span>
+          <span>ဖုန်း - <strong id="station-phone" style="color:#1e293b;">-</strong></span>
+        </div>
+      </div>
+    </div>
+    <div>
+      <button class="btn-switch" onclick="toggleView()">UI / List View ပြောင်းရန်</button>
+    </div>
+  </header>
+
+  <div class="container">
+    <section id="ui-view" class="view-section active">
+      <div id="tanks-container" class="tanks-grid"></div>
+    </section>
+
+    <section id="list-view" class="view-section">
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Tank No.</th>
+              <th>ဆီအမျိုးအစား</th>
+              <th>လက်ကျန်ဆီ (Liter)</th>
+              <th>ဆီအမြင့် (CM)</th>
+              <th>အမြင့်ဆုံးဆံ့ဝင်အား (L)</th>
+              <th>လက်ကျန် (%)</th>
+            </tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const socket = io();
+    let currentView = 'ui';
+
+    function toggleView() {
+      currentView = currentView === 'ui' ? 'list' : 'ui';
+      document.getElementById('ui-view').classList.toggle('active', currentView === 'ui');
+      document.getElementById('list-view').classList.toggle('active', currentView === 'list');
+    }
+
+    function getFuelColor(type) {
+      const t = type.toLowerCase();
+      if (t.includes('92')) return '#10b981'; // အစိမ်းရောင်
+      if (t.includes('95')) return '#eab308'; // အဝါရောင်
+      if (t.includes('premium') || t.includes('p-diesel')) return '#0284c7'; // အပြာရောင်
+      return '#64748b'; // ရိုးရိုးဒီဇယ်
+    }
+
+    function renderDashboard(data) {
+      document.getElementById('station-logo').src = data.station.logoUrl;
+      document.getElementById('station-name').innerText = data.station.name;
+      document.getElementById('station-branch').innerText = data.station.branchName;
+      document.getElementById('station-phone').innerText = data.station.phoneNumber;
+
+      const container = document.getElementById('tanks-container');
+      const tableBody = document.getElementById('table-body');
+      container.innerHTML = '';
+      tableBody.innerHTML = '';
+
+      data.tanks.forEach(tank => {
+        let pct = ((tank.currentLiter / tank.maxCapacity) * 100);
+        if(pct > 100) pct = 100; // ဘောင်မကျော်စေရန်
+        pct = pct.toFixed(1);
+       
+        // UI Render
+        container.innerHTML += `
+          <div class="tank-card">
+            <h3><strong>Tank ${tank.tankNumber}</strong> - ${tank.fuelType}</h3>
+            <div class="tank-cylinder">
+              <div class="fuel-liquid" style="height: ${pct}%; background-color: ${getFuelColor(tank.fuelType)}">
+                <span class="liter-text">${tank.currentLiter.toLocaleString()} L</span>
+              </div>
+            </div>
+            <div><span class="pct-badge">${pct}% ပြည့်နေသည်</span></div>
+            <p class="detail-text">အမြင့်: <strong>${tank.currentCM}</strong> CM<br>ဆံ့ဝင်အား: <strong>${tank.maxCapacity.toLocaleString()}</strong> L</p>
+          </div>
+        `;
+
+        // List Table Render
+        tableBody.innerHTML += `
+          <tr>
+            <td><strong>Tank ${tank.tankNumber}</strong></td>
+            <td><span style="color:${getFuelColor(tank.fuelType)}; font-weight:bold;">${tank.fuelType}</span></td>
+            <td><strong>${tank.currentLiter.toLocaleString()} L</strong></td>
+            <td>${tank.currentCM} CM</td>
+            <td>${tank.maxCapacity.toLocaleString()} L</td>
+            <td><span class="pct-badge" style="margin:0; padding:3px 10px;">${pct} %</span></td>
+          </tr>
+        `;
+      });
+    }
+
+    fetch('/api/data').then(res => res.json()).then(data => renderDashboard(data));
+    socket.on('dataUpdate', (data) => { renderDashboard(data); });
+  </script>
+</body>
+</html>
