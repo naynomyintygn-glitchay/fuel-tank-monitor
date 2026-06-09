@@ -39,7 +39,7 @@
             border-radius: 12px;
             padding: 25px;
             width: 100%;
-            max-width: 750px; /* ဇယားကွက်ဆန့်ရန် အကျယ်တိုးထားသည် */
+            max-width: 780px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.3);
             margin-bottom: 30px;
         }
@@ -99,7 +99,6 @@
             border-color: var(--primary-btn);
         }
 
-        /* ဇယားကွက် ပုံစံ ဒီဇိုင်း */
         .tank-table {
             width: 100%;
             border-collapse: collapse;
@@ -124,7 +123,6 @@
             text-align: center;
         }
 
-        /* Responsive UI layout for profile section */
         .profile-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -185,7 +183,7 @@
                     <thead>
                         <tr>
                             <th>တိုင်ကီ</th>
-                            <th>ဆီအမျိုးအစား</th>
+                            <th>ဆီအမျိုးအစား (ပြင်နိုင်သည်)</th>
                             <th>အမြင့်ဆုံးဆံ့ဝင်ဆံ့အား (L)</th>
                             <th>လက်ရှိဆီအမြင့် (CM)</th>
                             <th>လက်ရှိဆီပမာဏ (Liter)</th>
@@ -249,13 +247,11 @@
             setTimeout(() => { msgDiv.style.display = 'none'; }, 4000);
         }
 
-        // စာမျက်နှာပွင့်လာတာနဲ့ လက်ရှိ တိုင်ကီ ၆ ခုနှင့် ဆိုင်အချက်အလက်များကို ဆွဲယူပြီး ကွက်လပ်ဖြည့်ပေးခြင်း
         function loadCurrentData() {
             fetch('/api/data')
                 .then(res => res.json())
                 .then(data => {
                     if (data) {
-                        // ဆိုင် profile ဖြည့်သွင်းခြင်း
                         if(data.station) {
                             document.getElementById('stationName').value = data.station.name || '';
                             document.getElementById('branchName').value = data.station.branchName || '';
@@ -263,7 +259,6 @@
                             document.getElementById('logoUrl').value = data.station.logoUrl || '';
                         }
                        
-                        // တိုင်ကီ ၆ ခုအား Table ထဲသို့ Dropdown မပါဘဲ အစီအရီထည့်ခြင်း
                         if(data.tanks) {
                             const tbody = document.getElementById('tanksTableBody');
                             tbody.innerHTML = '';
@@ -271,7 +266,7 @@
                                 const tr = document.createElement('tr');
                                 tr.innerHTML = `
                                     <td><strong>Tank ${tank.tankNumber}</strong><input type="hidden" class="tank-num" value="${tank.tankNumber}"></td>
-                                    <td><span style="color:#ff9f43; font-weight:bold;">${tank.fuelType}</span></td>
+                                    <td><input type="text" class="tank-fuel" value="${tank.fuelType || ''}" style="color:#ff9f43; font-weight:bold; text-align:center;" required></td>
                                     <td><input type="number" class="tank-max" value="${tank.maxCapacity}" required></td>
                                     <td><input type="text" class="tank-cm" value="${tank.currentCM}" required></td>
                                     <td><input type="number" class="tank-liter" value="${tank.currentLiter}" required></td>
@@ -283,48 +278,46 @@
                 }).catch(err => console.log(err));
         }
 
-        // အလုပ်စတင်ပတ်ရန် လုပ်ဆောင်ချက် ခေါ်ယူခြင်း
         loadCurrentData();
 
-        // --- ၁။ လက်မန်ဖြင့် တိုင်ကီအားလုံး တစ်ပြိုင်နက် ဝင်ပြင်ခြင်း Logic ---
+        // --- ၁။ လက်မန်ဖြင့် ဝင်ပြင်ခြင်း (ဒေတာများ သေချာပေါက် ပို့ပေးမည့် စနစ်သစ်) ---
         document.getElementById('manualTanksForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const password = document.getElementById('adminPassword').value;
             if (!password) { return showMsg("ကျေးဇူးပြု၍ အပေါ်ဆုံးတွင် Admin Password ကို အရင်ရိုက်ထည့်ပေးပါဗျာ။", false); }
 
             const rows = document.querySelectorAll('#tanksTableBody tr');
-            let promises = [];
+            let updatedTanksList = [];
 
-            // တိုင်ကီ တစ်ခုချင်းစီအတွက် API ထံသို့ လှမ်းပို့မည့် Loop ပတ်ခြင်း
             rows.forEach(row => {
                 const tankNumber = row.querySelector('.tank-num').value;
+                const fuelType = row.querySelector('.tank-fuel').value; // *** ဤနေရာတွင် ဆီအမျိုးအစားကို သေချာဖတ်ယူသွားပါပြီ ***
                 const maxCapacity = row.querySelector('.tank-max').value;
                 const currentCM = row.querySelector('.tank-cm').value;
                 const currentLiter = row.querySelector('.tank-liter').value;
 
-                let p = fetch('/api/admin/update-tank', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        password,
-                        tankNumber: Number(tankNumber),
-                        maxCapacity: Number(maxCapacity),
-                        currentCM: currentCM,
-                        currentLiter: Number(currentLiter)
-                    })
-                }).then(res => res.json());
-               
-                promises.push(p);
+                updatedTanksList.push({
+                    tankNumber: Number(tankNumber),
+                    fuelType: String(fuelType).trim(),
+                    maxCapacity: Number(maxCapacity),
+                    currentCM: currentCM,
+                    currentLiter: Number(currentLiter)
+                });
             });
 
             try {
-                const results = await Promise.all(promises);
-                const failed = results.find(r => r.success === false);
-                if (failed) {
-                    showMsg(failed.message || "ပြင်ဆင်မှု မအောင်မြင်ပါ။ Password မှားယွင်းနေပုံရပါတယ်ဗျာ။", false);
-                } else {
-                    showMsg("တိုင်ကီ (၆) ခုလုံး၏ အချက်အလက်များကို အောင်မြင်စွာ ပြင်ဆင်ပြီးပါပြီဗျာ။", true);
+                const response = await fetch('/api/admin/update-all-tanks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password, tanksData: updatedTanksList })
+                });
+               
+                const result = await response.json();
+                if (result.success) {
+                    showMsg("တိုင်ကီ (၆) ခုလုံး၏ အချက်အလက်များနှင့် ဆီအမျိုးအစားများကို အောင်မြင်စွာ ပြင်ဆင်ပြီးပါပြီဗျာ။", true);
                     loadCurrentData();
+                } else {
+                    showMsg(result.message || "ပြင်ဆင်မှု မအောင်မြင်ပါ။ Password မှားနေနိုင်ပါတယ်ဗျာ။", false);
                 }
             } catch (error) {
                 showMsg("ဆာဗာနှင့် ချိတ်ဆက်မှု အမှားအယွင်းရှိနေပါသည်။", false);
@@ -346,7 +339,6 @@
             try {
                 const response = await fetch('/api/admin/upload-excel', { method: 'POST', body: formData });
                 const result = await response.json();
-               
                 if (result.success) {
                     showMsg(result.message, true);
                     fileInput.value = '';
@@ -390,4 +382,3 @@
     </script>
 </body>
 </html>
-
