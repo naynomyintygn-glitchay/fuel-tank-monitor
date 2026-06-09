@@ -12,7 +12,7 @@ app.use(express.static('public'));
 
 const upload = multer({ dest: 'uploads/' });
 
-// Database initial state
+// Database Initial State
 let stationData = {
     name: "Htoo Fuel Station",
     branchName: "ပြင်ဦးလွင်",
@@ -30,34 +30,59 @@ let tanks = [
     { tankNumber: 6, fuelType: "95 RON", maxCapacity: 15000, currentCM: 65.3, currentLiter: 4500 }
 ];
 
-app.get('/api/data', (req, res) => { res.json({ station: stationData, tanks: tanks }); });
+// API - ဒေတာများ ဆွဲယူရန်
+app.get('/api/data', (req, res) => {
+    res.json({ station: stationData, tanks: tanks });
+});
 
+// API - ဆီဆိုင် Profile ပြင်ဆင်ရန်
 app.post('/api/admin/update-station', (req, res) => {
     const { password, name, branchName, phoneNumber, logoUrl } = req.body;
     if (password !== stationData.adminPassword) return res.status(403).json({ success: false, message: "Password မှားယွင်းနေပါသည်။" });
-    stationData.name = name; stationData.branchName = branchName; stationData.phoneNumber = phoneNumber; stationData.logoUrl = logoUrl;
+   
+    stationData.name = name;
+    stationData.branchName = branchName;
+    stationData.phoneNumber = phoneNumber;
+    stationData.logoUrl = logoUrl;
+   
     io.emit('dataUpdate', { station: stationData, tanks: tanks });
     res.json({ success: true, message: "ဆိုင်အချက်အလက် ပြင်ဆင်ပြီးပါပြီ။" });
 });
 
-app.post('/api/admin/update-tank', (req, res) => {
-    const { password, tankNumber, maxCapacity, currentCM, currentLiter } = req.body;
-    if (password !== stationData.adminPassword) return res.status(403).json({ success: false, message: "Password မှားယွင်းနေပါသည်။" });
-    const index = tanks.findIndex(t => t.tankNumber == tankNumber);
-    if (index !== -1) {
-        tanks[index].maxCapacity = Number(maxCapacity);
-        tanks[index].currentCM = currentCM;
-        tanks[index].currentLiter = Number(currentLiter);
-        io.emit('dataUpdate', { station: stationData, tanks: tanks });
-        return res.json({ success: true, message: "လက်မန်ဖြင့် ပြင်ဆင်မှု အောင်မြင်ပါသည်။" });
+// API - တိုင်ကီ ၆ ခုလုံးကို ပြိုင်တူ တစ်ပြိုင်နက် သိမ်းဆည်းပေးခြင်း Logic
+app.post('/api/admin/update-all-tanks', (req, res) => {
+    const { password, tanksData } = req.body;
+   
+    // Password စစ်ဆေးခြင်း
+    if (password !== stationData.adminPassword) {
+        return res.status(403).json({ success: false, message: "Password မှားယွင်းနေပါသည်။" });
     }
-    res.status(404).json({ success: false, message: "Tank ရှာမတွေ့ပါ။" });
+   
+    if (!tanksData || !Array.isArray(tanksData)) {
+        return res.status(400).json({ success: false, message: "မှန်ကန်သော ဒေတာပုံစံ မဟုတ်ပါ။" });
+    }
+
+    // ဝင်လာသော တိုင်ကီဒေတာ ၆ ခုလုံးကို Array ထဲမှာ အစားထိုး သိမ်းဆည်းခြင်း
+    tanksData.forEach(incomingTank => {
+        const index = tanks.findIndex(t => t.tankNumber == incomingTank.tankNumber);
+        if (index !== -1) {
+            if (incomingTank.fuelType !== undefined && incomingTank.fuelType !== "") {
+                tanks[index].fuelType = String(incomingTank.fuelType).trim(); // ဆီအမျိုးအစားသစ်ကို အစားထိုးသိမ်းဆည်းခြင်း
+            }
+            tanks[index].maxCapacity = Number(incomingTank.maxCapacity);
+            tanks[index].currentCM = incomingTank.currentCM;
+            tanks[index].currentLiter = Number(incomingTank.currentLiter);
+        }
+    });
+   
+    // Frontend UI များဆီသို့ ဒေတာအသစ် ချက်ချင်း ပို့လွှတ်ခြင်း
+    io.emit('dataUpdate', { station: stationData, tanks: tanks });
+    return res.json({ success: true, message: "တိုင်ကီအားလုံးကို အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီဗျာ။" });
 });
 
-// Excel တစ်ခုတည်းဖြင့် တိုင်ကီအားလုံး (Tank 1 - 6) ကို တစ်ပြိုင်နက် Update လုပ်မည့် အဆင့်မြင့် စနစ်
+// API - Excel Bulk Upload စနစ်
 app.post('/api/admin/upload-excel', upload.single('excelFile'), (req, res) => {
     const { password } = req.body;
-   
     if (password !== stationData.adminPassword) {
         if(req.file) fs.unlinkSync(req.file.path);
         return res.status(403).json({ success: false, message: "Password မှားယွင်းနေပါသည်။" });
@@ -66,34 +91,27 @@ app.post('/api/admin/upload-excel', upload.single('excelFile'), (req, res) => {
 
     try {
         const workbook = xlsx.readFile(req.file.path);
-        let updatedTanksCount = 0;
-        let updateDetails = [];
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rawData = xlsx.utils.sheet_to_json(worksheet, { defval: "" });
+        fs.unlinkSync(req.file.path);
 
-        // Excel ထဲမှာရှိသမျှ Sheet အားလုံးကို ပတ်ဖတ်မည်
-        workbook.SheetNames.forEach(sheetName => {
-            // Sheet နာမည်ထဲကနေ ကိန်းဂဏန်း (Tank Number) ကို ရှာမည် (ဥပမာ - "Tank 1" သို့မဟုတ် "Tank1" မှ 1 ကိုထုတ်ယူမည်)
-            const match = sheetName.match(/\d+/);
-            if (!match) return; // အကယ်၍ နံပါတ်မပါရင် ကျော်သွားမည်
-
-            const detectedTankNumber = parseInt(match[0]);
-
-            // ကျွန်ုပ်တို့ စနစ်ထဲမှာ ရှိတဲ့ Tank 1 မှ 6 အထိ ဟုတ်မဟုတ် စစ်ဆေးမည်
-            const tankIndex = tanks.findIndex(t => t.tankNumber == detectedTankNumber);
-            if (tankIndex === -1) return; // သက်ဆိုင်မှုမရှိသော Tank ဖြစ်ပါက ကျော်သွားမည်
-
-            const worksheet = workbook.Sheets[sheetName];
-            const rawData = xlsx.utils.sheet_to_json(worksheet, { defval: "" });
-
+        tanks.forEach((tank, tIndex) => {
             let latestCM = "N/A";
             let latestLiter = 0;
+            let possibleLiters = [];
+            let possibleCMs = [];
+
+            if(tank.tankNumber === 1) { possibleLiters = ['Liter', 'Liter_1']; possibleCMs = ['CM', 'CM_1']; }
+            else if(tank.tankNumber === 2) { possibleLiters = ['Liter_2', 'Liter_3']; possibleCMs = ['CM_2', 'CM_3']; }
+            else if(tank.tankNumber === 3) { possibleLiters = ['Liter_4', 'Liter_5']; possibleCMs = ['CM_4', 'CM_5']; }
+            else if(tank.tankNumber === 4) { possibleLiters = ['Liter_6', 'Liter_7']; possibleCMs = ['CM_6', 'CM_7']; }
+            else if(tank.tankNumber === 5) { possibleLiters = ['Liter_8', 'Liter_9']; possibleCMs = ['CM_8', 'CM_9']; }
+            else if(tank.tankNumber === 6) { possibleLiters = ['Liter_10', 'Liter_11']; possibleCMs = ['CM_10', 'CM_11']; }
 
             rawData.forEach(row => {
-                const possibleLiters = [row['Liter'], row['Liter_1'], row['Liter_2']];
-                const possibleCMs = [row['CM'], row['CM_1'], row['CM_2']];
-
                 for (let i = 0; i < possibleLiters.length; i++) {
-                    let litVal = possibleLiters[i];
-                    let cmVal = possibleCMs[i];
+                    let litVal = row[possibleLiters[i]];
+                    let cmVal = row[possibleCMs[i]];
 
                     if (litVal !== undefined && litVal !== null && String(litVal).trim() !== "") {
                         let cleanLitStr = String(litVal).replace(/,/g, '').trim();
@@ -116,31 +134,14 @@ app.post('/api/admin/upload-excel', upload.single('excelFile'), (req, res) => {
                 }
             });
 
-            // ဒေတာအသစ် ရှိပါက သက်ဆိုင်ရာ Tank ထဲသို့ ထည့်သွင်းမည်
             if (latestLiter > 0) {
-                tanks[tankIndex].currentCM = latestCM;
-                tanks[tankIndex].currentLiter = latestLiter;
-                updatedTanksCount++;
-                updateDetails.push(`Tank ${detectedTankNumber}`);
+                tanks[tIndex].currentCM = latestCM;
+                tanks[tIndex].currentLiter = latestLiter;
             }
         });
 
-        // ယာယီသိမ်းထားသော Excel ဖိုင်အား ဖျက်သိမ်းမည်
-        fs.unlinkSync(req.file.path);
-
-        if (updatedTanksCount > 0) {
-            // Real-time ပြောင်းလဲမှုကို Frontend ဆီသို့ ပို့လွှတ်မည်
-            io.emit('dataUpdate', { station: stationData, tanks: tanks });
-            return res.json({
-                success: true,
-                message: `အောင်မြင်ပါသည်ဗျာ။ Excel ဖိုင်မှ စုစုပေါင်း တိုင်ကီ (${updatedTanksCount}) ခု (${updateDetails.join(', ')}) ကို တစ်ပြိုင်နက် Update ပြုလုပ်ပြီးပါပြီ။`
-            });
-        } else {
-            return res.status(400).json({
-                success: false,
-                message: "Excel ထဲတွင် အကျုံးဝင်သော Tank Sheet နာမည်များ သို့မဟုတ် ဒေတာများ ရှာမတွေ့ပါ။ ဖိုင်ကို ပြန်လည်စစ်ဆေးပေးပါ။"
-            });
-        }
+        io.emit('dataUpdate', { station: stationData, tanks: tanks });
+        res.json({ success: true, message: "Excel ဖိုင်ကို ဖတ်ရှုပြီး တိုင်ကီ (၆) ခုလုံးအား အောင်မြင်စွာ Update ပြုလုပ်ပြီးပါပြီဗျာ။" });
 
     } catch (error) {
         if(fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
@@ -150,6 +151,5 @@ app.post('/api/admin/upload-excel', upload.single('excelFile'), (req, res) => {
 
 io.on('connection', (socket) => { console.log('Client Connected'); });
 
-// Cloud Server ပေါ်တွင် Port ပြောင်းလဲမှုများကို အလိုအလျောက် သိရှိစေမည့် လိုင်း
 const PORT = process.env.PORT || 3000;
 http.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
