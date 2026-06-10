@@ -1,189 +1,120 @@
 const express = require('express');
-const app = express();
-const http = require('http').createServer(app);
-const io = require('socket.io')(http);
 const multer = require('multer');
 const xlsx = require('xlsx');
+const http = require('http');
+const socketIo = require('socket.io');
 const path = require('path');
-const fs = require('fs');
 
-app.use(express.json());
-app.use(express.static('public'));
-
-// ဖိုင်တင်ရန် သတ်မှတ်ချက်
+const app = express();
+const server = http.createServer(app);
+const io = socketIo(server);
 const upload = multer({ dest: 'uploads/' });
 
-// ဆိုင်အချက်အလက် (Default)
-let stationData = {
-    name: "Htoo Fuel Station",
-    branchName: "ပြင်ဦးလွင်ဘဏ်ခွဲ",
-    phoneNumber: "09-123456789",
-    logoUrl: "https://placehold.co/100x100/orange/white?text=HTOO",
-    adminPassword: "123"
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Database Fallback Store Memory
+let systemDatabase = {
+    lastUpdated: "မရှိသေးပါ",
+    tanks: [
+        { tankNumber: 1, fuelType: "HSD", currentCM: "220", currentLiter: "22500", maxCapacity: "30500" },
+        { tankNumber: 2, fuelType: "Premium Diesel", currentCM: "220", currentLiter: "22500", maxCapacity: "30500" },
+        { tankNumber: 3, fuelType: "92 RON", currentCM: "220", currentLiter: "22500", maxCapacity: "30500" },
+        { tankNumber: 4, fuelType: "92 RON", currentCM: "220", currentLiter: "22500", maxCapacity: "30500" },
+        { tankNumber: 5, fuelType: "95 RON", currentCM: "142", currentLiter: "11000", maxCapacity: "15000" },
+        { tankNumber: 6, fuelType: "92 RON", currentCM: "142", currentLiter: "11000", maxCapacity: "15000" }
+    ]
 };
 
-// တိုင်ကီ (၆) လုံး အချက်အလက် (Default)
-let tanks = [
-    { tankNumber: 1, fuelType: "HSD", maxCapacity: 30500, currentCM: "0", currentLiter: 0 },
-    { tankNumber: 2, fuelType: "Premium Diesel", maxCapacity: 30500, currentCM: "0", currentLiter: 0 },
-    { tankNumber: 3, fuelType: "92 RON", maxCapacity: 30500, currentCM: "0", currentLiter: 0 },
-    { tankNumber: 4, fuelType: "92 RON", maxCapacity: 30500, currentCM: "0", currentLiter: 0 },
-    { tankNumber: 5, fuelType: "95 RON", maxCapacity: 15000, currentCM: "0", currentLiter: 0 },
-    { tankNumber: 6, fuelType: "92 RON", maxCapacity: 15000, currentCM: "0", currentLiter: 0 }
-];
-
-// Front-end ကနေ ဒေတာလှမ်းတောင်းလျှင် ပေးမည့် API
+// API: Get Live Monitor Data
 app.get('/api/data', (req, res) => {
-    res.json({ station: stationData, tanks: tanks });
+    res.json(systemDatabase);
 });
 
-// Admin ကနေ တိုင်ကီဒေတာအားလုံးကို Form နှင့် ကိုယ်တိုင်ပြင်လျှင် သုံးမည့် API
-app.post('/api/admin/update-all-tanks', (req, res) => {
-    try {
-        const password = req.body.password;
-        if (password !== stationData.adminPassword) {
-            return res.status(403).json({ success: false, message: "Password မှားယွင်းနေပါသည်။" });
-        }
-
-        for (let i = 1; i <= 6; i++) {
-            const index = tanks.findIndex(t => t.tankNumber === i);
-            if (index !== -1) {
-                if (req.body[`tank${i}_fuelType`] !== undefined) tanks[index].fuelType = String(req.body[`tank${i}_fuelType`]).trim();
-                if (req.body[`tank${i}_maxCapacity`] !== undefined) tanks[index].maxCapacity = Number(req.body[`tank${i}_maxCapacity`]) || 0;
-                if (req.body[`tank${i}_currentCM`] !== undefined) tanks[index].currentCM = String(req.body[`tank${i}_currentCM`]).trim();
-                if (req.body[`tank${i}_currentLiter`] !== undefined) tanks[index].currentLiter = Number(req.body[`tank${i}_currentLiter`]) || 0;
-            }
-        }
-       
-        io.emit('dataUpdate', { station: stationData, tanks: tanks });
-        return res.json({ success: true, message: "တိုင်ကီအားလုံးကို အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီဗျာ။" });
-    } catch (error) {
-        return res.status(500).json({ success: false, message: "Error: " + error.message });
-    }
-});
-
-// ✅ မူရင်း Excel Dip Chart (Sheet ၆ ခုစလုံး) ကို အမှားအယွင်းမရှိ အော်တိုဖတ်ပေးမည့် စွမ်းထက်ဆုံး Excel Upload API
-app.post('/api/admin/upload-excel', upload.single('excelFile'), (req, res) => {
-    const { password } = req.body;
+// API: Save Manual Inputs
+app.post('/api/manual-save', (req, res) => {
+    const { tanks } = req.body;
+    const now = new Date();
+    systemDatabase.lastUpdated = now.toLocaleDateString() + " " + now.toLocaleTimeString();
+    systemDatabase.tanks = tanks;
    
-    // Password စစ်ဆေးခြင်း
-    if (password !== stationData.adminPassword) {
-        if (req.file) fs.unlinkSync(req.file.path);
-        return res.status(403).json({ success: false, message: "Password မှားယွင်းနေပါသည်။" });
-    }
-    if (!req.file) return res.status(400).json({ success: false, message: "Excel ဖိုင်တင်ရန် လိုအပ်ပါသည်။" });
+    io.emit('dataUpdate', systemDatabase); // Broadcast Live Frontend Update
+    res.json({ status: "success" });
+});
 
+// API: Processing Excel - Read Sheet per Tank and get LAST VALID ROW values
+app.post('/api/excel-upload', upload.single('excelFile'), (req, res) => {
     try {
-        // Excel ဖိုင်ကို ဖတ်ခြင်း
         const workbook = xlsx.readFile(req.file.path);
+        const sheetNames = workbook.SheetNames; // Sheet list (Tank 1, Tank 2, ...)
        
-        // Sheet အားလုံးကို တစ်ခုချင်းစီပတ်ပြီး သက်ဆိုင်ရာ Tank ဒေတာ ရှာဖွေခြင်း
-        workbook.SheetNames.forEach(sheetName => {
-            const worksheet = workbook.Sheets[sheetName];
+        let updatedTanks = [];
+
+        sheetNames.forEach((sheetName, index) => {
+            if(index >= 6) return; // စနစ်တွင် တိုင်ကီ ၆ လုံးသာ ကန့်သတ်ဖတ်ရှုမည်
            
-            // Row ဒေတာများကို Matrix (2D Array) အဖြစ် ပြောင်းလဲခြင်း (ခေါင်းစီးမျိုးစုံ ရှိနေနိုင်သောကြောင့် ဖြစ်သည်)
-            const rangeData = xlsx.utils.sheet_to_json(worksheet, { header: 1 });
+            const sheet = workbook.Sheets[sheetName];
+            // Sheet တစ်ခုလုံးကို Row မျိုးစုံဖတ်နိုင်ရန် 2D Array ပြောင်းလဲခြင်း
+            const matrixData = xlsx.utils.sheet_to_json(sheet, { header: 1 });
            
-            let tankNumber = null;
-            let maxCapacity = 0;
-            let foundHeaderRow = -1;
+            let lastValidCM = "0";
+            let lastValidLiter = "0";
+            let detectedCapacity = 30500; // Fallback default
+            let detectedProduct = "Unknown";
 
-            // (၁) အပေါ်ပိုင်း Header မှာ Tank နံပါတ် နှင့် Capacity ကို လိုက်ရှာခြင်း
-            for (let i = 0; i < Math.min(rangeData.length, 10); i++) {
-                const rowStr = JSON.stringify(rangeData[i] || []).toLowerCase();
+            // စာမျက်နှာအပေါ်ပိုင်း ခေါင်းစဉ်ဧရိယာမှ CAPACITY နှင့် PRODUCT ရှာဖွေခြင်း
+            matrixData.forEach(row => {
+                if(!row || row.length === 0) return;
+                const lineStr = row.join(" ").toUpperCase();
                
-                // Tank No. ရှာဖွေခြင်း
-                if (rowStr.includes("tank no") || rowStr.includes("tankno")) {
-                    const match = rowStr.match(/tank\s*(?:no\.?|number)?\s*\(?(\d+)\)?/i) || rowStr.match(/tank\s*no\s*(\d+)/i) || rowStr.match(/(\d+)/);
-                    if (match) tankNumber = parseInt(match[1]);
+                if(lineStr.includes("CAPACITY")) {
+                    const match = lineStr.match(/\d+/);
+                    if(match) detectedCapacity = parseInt(match[0]);
                 }
+                // ဆီအမျိုးအစားသတ်မှတ်ချက်ကို ရှာဖွေခြင်း
+                if(lineStr.includes("92 RON")) detectedProduct = "92 RON";
+                else if(lineStr.includes("95 RON")) detectedProduct = "95 RON";
+                else if(lineStr.includes("PREMIUM DIESEL") || lineStr.includes("PDO")) detectedProduct = "Premium Diesel";
+                else if(lineStr.includes("HSD") || lineStr.includes("DIESEL")) detectedProduct = "HSD";
+            });
+
+            // 🌟 [အဓိကစနစ်] အောက်ဆုံး Row များမှ ကိန်းဂဏန်းစစ်စစ် ပါဝင်သော စာကြောင်းကို ပြောင်းပြန်လှန်၍ ရှာဖွေဖတ်ရှုခြင်း
+            for (let i = matrixData.length - 1; i >= 0; i--) {
+                const currentRow = matrixData[i];
+                if (!currentRow || currentRow.length < 3) continue;
                
-                // Capacity ရှာဖွေခြင်း
-                if (rowStr.includes("capacity")) {
-                    const capMatch = rowStr.match(/(\d[\d,]*)/);
-                    if (capMatch) maxCapacity = parseInt(capMatch[1].replace(/,/g, ''));
+                // Row ထဲက ကော်လံတွေကို စစ်ဆေးပြီး ဂဏန်းအမှန်ပါတာကို ယူခြင်း
+                const col1 = parseFloat(String(currentRow[1]).replace(/,/g, ''));
+                const col2 = parseFloat(String(currentRow[2]).replace(/,/g, ''));
+
+                if (!isNaN(col1) && !isNaN(col2) && col1 > 0 && col2 > 0) {
+                    lastValidCM = String(currentRow[1]);
+                    lastValidLiter = String(currentRow[2]);
+                    break; // နောက်ဆုံးစာကြောင်း တွေ့သည်နှင့် ရပ်တန့်မည်
                 }
             }
 
-            // အကယ်၍ Sheet နာမည်ထဲမှာ Tank ပါခဲ့ရင်လည်း နံပါတ်ထုတ်ယူခြင်း (ဥပမာ - Tank 1)
-            if (!tankNumber) {
-                const nameMatch = sheetName.match(/tank\s*(\d+)/i) || sheetName.match(/(\d+)/);
-                if (nameMatch) tankNumber = parseInt(nameMatch[1]);
-            }
-
-            // တိုင်ကီနံပါတ် ရှိမှသာ ရှေ့ဆက်ဖတ်မည်
-            if (tankNumber && tankNumber >= 1 && tankNumber <= 6) {
-                const tIndex = tanks.findIndex(t => t.tankNumber === tankNumber);
-                if (tIndex !== -1 && maxCapacity > 0) {
-                    tanks[tIndex].maxCapacity = maxCapacity; // မူရင်း Capacity အတိုင်း အော်တိုပြင်ပေးသည်
-                }
-
-                let maxSrNo = -1;
-                let finalCM = "0";
-                let finalLiter = 0;
-
-                // (၂) ဇယားကွက်ထဲမှ Sr.No, CM, Liter ဒေတာအတွဲများကို ဒေါင်လိုက် လိုက်ရှာခြင်း
-                // ခေါင်းစီးအတန်း (Sr.No ပါဝင်သော အတန်း) ကို အရင်ရှာပါမည်
-                for (let i = 0; i < rangeData.length; i++) {
-                    const row = rangeData[i] || [];
-                    if (row.some(cell => String(cell).toLowerCase().replace(/\s+/g, '') === 'sr.no')) {
-                        foundHeaderRow = i;
-                        break;
-                    }
-                }
-
-                if (foundHeaderRow !== -1) {
-                    const headerRow = rangeData[foundHeaderRow];
-                   
-                    // ခေါင်းစီးအတန်းအောက်က ဒေတာအားလုံးကို စစ်ဆေးခြင်း
-                    for (let r = foundHeaderRow + 1; r < rangeData.length; r++) {
-                        const row = rangeData[r] || [];
-                       
-                        // တစ်တန်းထဲမှာ ဒေတာအတွဲ ၃ တွဲရှိနိုင်သောကြောင့် ၃ ကော်လံစီ ခွဲထုတ်စစ်ဆေးခြင်း
-                        for (let c = 0; c < row.length; c += 3) {
-                            let srNoVal = parseInt(String(row[c]).trim());
-                            let cmVal = row[c+1];
-                            let litVal = row[c+2];
-
-                            if (!isNaN(srNoVal) && cmVal !== undefined && litVal !== undefined) {
-                                // စာရင်းထဲတွင် Sr.No အကြီးဆုံး (အောက်ဆုံး) ဖြစ်မည့် နောက်ဆုံးထွက် ဒေတာကို မှတ်သားခြင်း
-                                if (srNoVal > maxSrNo) {
-                                    maxSrNo = srNoVal;
-                                    finalCM = String(cmVal).trim();
-                                    finalLiter = parseInt(String(litVal).replace(/,/g, '').trim()) || 0;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // (၃) ရှာဖွေတွေ့ရှိသော နောက်ဆုံးထွက်တန်ဖိုးကို Memory ထဲတွင် သွားရောက် အပ်ဒိတ်လုပ်ခြင်း
-                if (maxSrNo !== -1 && tIndex !== -1) {
-                    tanks[tIndex].currentCM = finalCM;
-                    tanks[tIndex].currentLiter = finalLiter;
-                }
-            }
+            updatedTanks.push({
+                tankNumber: index + 1,
+                fuelType: detectedProduct !== "Unknown" ? detectedProduct : `Tank ${index + 1}`,
+                currentCM: lastValidCM,
+                currentLiter: lastValidLiter,
+                maxCapacity: String(detectedCapacity)
+            });
         });
 
-        // ဖိုင်ကို ရှင်းထုတ်ပြီး Socket.io ကနေ Front-end UI ဆီ Real-time လှမ်းပို့ခြင်း
-        fs.unlinkSync(req.file.path);
-        io.emit('dataUpdate', { station: stationData, tanks: tanks });
-       
-        return res.json({ success: true, message: "မူရင်း Excel Dip Chart ထဲမှ နောက်ဆုံးထွက် အချက်အလက်အားလုံးကို အောင်မြင်စွာ ဖတ်ပြီးပါပြီဗျာ။" });
+        if(updatedTanks.length > 0) {
+            const now = new Date();
+            systemDatabase.lastUpdated = now.toLocaleDateString() + " " + now.toLocaleTimeString();
+            systemDatabase.tanks = updatedTanks;
+            io.emit('dataUpdate', systemDatabase);
+        }
 
-    } catch (error) {
-        if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-        res.status(500).json({ success: false, message: "Excel Read Error: " + error.message });
+        res.json({ status: "success", data: systemDatabase });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ status: "error", message: err.message });
     }
 });
 
-// Socket Connection ငြိမ်မငြိမ် စောင့်ကြည့်ခြင်း
-io.on('connection', (socket) => {
-    console.log('Client Connected');
-});
-
-// Port သတ်မှတ်ချက်
-const PORT = process.env.PORT || 3000;
-http.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
+server.listen(3000, () => console.log('Htoo Station Server running on port 3000'));
