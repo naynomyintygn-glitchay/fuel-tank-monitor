@@ -33,17 +33,17 @@
         </div>
     </div>
 
-    <div class="max-w-5xl mx-auto mb-5 flex justify-between items-center bg-white p-3 rounded-xl shadow-sm">
+    <div class="max-w-5xl mx-auto mb-5 flex flex-col sm:flex-row justify-between items-center bg-white p-3 rounded-xl shadow-sm gap-3">
         <h2 class="text-base md:text-lg font-bold text-gray-700 flex items-center gap-2">
             <span class="w-2.5 h-5 bg-orange-500 rounded-full inline-block"></span>
             ဆီတိုင်ကီများ၏ လက်ရှိအခြေအနေ
         </h2>
        
-        <div class="flex bg-gray-100 p-1 rounded-lg">
-            <button id="btnGrid" onclick="switchView('grid')" class="px-3 py-1.5 rounded-md text-xs font-bold transition-all bg-white text-orange-600 shadow-sm">
+        <div class="flex bg-gray-100 p-1 rounded-lg border border-gray-200">
+            <button id="btnGrid" onclick="switchView('grid')" class="px-4 py-1.5 rounded-md text-xs font-bold transition-all bg-white text-orange-600 shadow-sm">
                 📱 Grid View
             </button>
-            <button id="btnList" onclick="switchView('list')" class="px-3 py-1.5 rounded-md text-xs font-bold transition-all text-gray-500 hover:text-gray-700">
+            <button id="btnList" onclick="switchView('list')" class="px-4 py-1.5 rounded-md text-xs font-bold transition-all text-gray-500 hover:text-gray-700">
                 📄 List View
             </button>
         </div>
@@ -51,22 +51,22 @@
 
     <div class="max-w-5xl mx-auto">
        
+        <div id="loadingText" class="text-center text-gray-400 py-8 text-sm">အချက်အလက်များ ဆွဲယူနေပါသည်...</div>
+
         <div id="gridViewContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
             </div>
 
         <div id="listViewContainer" class="hidden w-full">
             </div>
-
-        <div id="loadingText" class="text-center text-gray-400 py-8 text-sm">အချက်အလက်များ ဆွဲယူနေပါသည်...</div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        let currentView = 'grid'; // Default အမြင်
-        let globalData = null;    // လက်ရှိ data ကို သိမ်းဆည်းထားရန် Memory
+        let currentView = 'grid'; // စစချင်း ပေါ်မည့် View ပုံစံ ('grid' သို့မဟုတ် 'list')
+        let globalData = null;    // Socket ကလာသော data ကို မှတ်ထားရန်
 
-        // UI View ပုံစံ အကူးအပြောင်း လုပ်ဆောင်ပေးသည့် Function
+        // အစ်ကိုကြီးဗျာ... ခလုတ်နှိပ်လိုက်ရင် ဝှက်တာ/ပြတာ သေချာလုပ်ပေးမည့် လုပ်ဆောင်ချက်ပါဗျာ
         function switchView(view) {
             currentView = view;
             const btnGrid = document.getElementById('btnGrid');
@@ -74,57 +74,60 @@
             const gridBox = document.getElementById('gridViewContainer');
             const listBox = document.getElementById('listViewContainer');
 
-            if(view === 'grid') {
-                // Button Style ပြောင်းလဲခြင်း
-                btnGrid.className = "px-3 py-1.5 rounded-md text-xs font-bold transition-all bg-white text-orange-600 shadow-sm";
-                btnList.className = "px-3 py-1.5 rounded-md text-xs font-bold transition-all text-gray-500 hover:text-gray-700";
-                // Layout ပြောင်းလဲခြင်း
-                gridBox.classList.remove('hidden');
-                listBox.classList.add('hidden');
+            if (view === 'grid') {
+                // Button Style ကို Grid ဘက်သို့ အဝါ/လိမ္မော်ရောင် ပြောင်းခြင်း
+                btnGrid.className = "px-4 py-1.5 rounded-md text-xs font-bold transition-all bg-white text-orange-600 shadow-sm";
+                btnList.className = "px-4 py-1.5 rounded-md text-xs font-bold transition-all text-gray-500 hover:text-gray-700";
+               
+                // Container ကို ပြောင်းလဲခြင်း
+                gridBox.style.display = 'grid';
+                listBox.style.display = 'none';
             } else {
-                // Button Style ပြောင်းလဲခြင်း
-                btnGrid.className = "px-3 py-1.5 rounded-md text-xs font-bold transition-all text-gray-500 hover:text-gray-700";
-                btnList.className = "px-3 py-1.5 rounded-md text-xs font-bold transition-all bg-white text-orange-600 shadow-sm";
-                // Layout ပြောင်းလဲခြင်း
-                gridBox.classList.add('hidden');
-                listBox.classList.remove('hidden');
+                // Button Style ကို List ဘက်သို့ ပြောင်းလဲခြင်း
+                btnGrid.className = "px-4 py-1.5 rounded-md text-xs font-bold transition-all text-gray-500 hover:text-gray-700";
+                btnList.className = "px-4 py-1.5 rounded-md text-xs font-bold transition-all bg-white text-orange-600 shadow-sm";
+               
+                // Container ကို ပြောင်းလဲခြင်း
+                gridBox.style.display = 'none';
+                listBox.style.display = 'block';
             }
            
-            // ဒေတာရှိပါက UI ပြန်ဆွဲပေးပါ
-            if(globalData) renderUI(globalData);
+            // ဒေတာ ရှိပြီးသားဖြစ်လျှင် UI ကို ချက်ချင်း ပြန်ဆွဲပေးပါသည်
+            if (globalData) renderUI(globalData);
         }
 
-        // UI ကို အမှားအယွင်းမရှိ ပြင်ဆင်ပြသပေးမည့် ပင်မလုပ်ဆောင်ချက်
+        // မျက်နှာပြင်တစ်ခုလုံးကို ဒေတာအသစ်ဖြင့် တည်ဆောက်ပြသပေးသည့် ပင်မ Function
         function renderUI(data) {
-            globalData = data; // မှတ်ဉာဏ်ထဲ သိမ်းဆည်းသည်
-            document.getElementById('loadingText').classList.add('hidden');
+            globalData = data;
+            document.getElementById('loadingText').style.display = 'none';
 
-            // ဆိုင်အချက်အလက်များ အပ်ဒိတ်လုပ်ခြင်း
-            if(data.station) {
+            // (၁) ဆိုင် Header အချက်အလက်များ ထည့်သွင်းခြင်း
+            if (data.station) {
                 document.getElementById('stationName').innerText = data.station.name;
                 document.getElementById('stationBranch').innerText = data.station.branchName;
                 document.getElementById('stationPhone').innerText = data.station.phoneNumber;
-                if(data.station.logoUrl) document.getElementById('stationLogo').src = data.station.logoUrl;
+                if (data.station.logoUrl) document.getElementById('stationLogo').src = data.station.logoUrl;
             }
 
             const gridContainer = document.getElementById('gridViewContainer');
             const listContainer = document.getElementById('listViewContainer');
            
+            // အဟောင်းများကို လုံးဝ ရှင်းထုတ်ပစ်ပါသည်
             gridContainer.innerHTML = '';
             listContainer.innerHTML = '';
 
-            // တိုင်ကီတစ်ခုချင်းစီကို Loop ပတ်ပြီး UI ပုံစံနှစ်မျိုးလုံး တစ်ခါတည်းဆောက်ခြင်း
+            // (၂) တိုင်ကီတစ်ခုချင်းစီကို Loop ပတ်ပြီး Grid ကတ်ပြားရော၊ List တန်းပါ ဆောက်လုပ်ခြင်း
             data.tanks.forEach(tank => {
                 const percentage = Math.min(Math.round((tank.currentLiter / tank.maxCapacity) * 100), 100) || 0;
                
                 // ဆီအမျိုးအစားအလိုက် ခွဲခြားပြသမည့် အရောင်များ
                 let fuelColor = "bg-gray-700";
-                if(tank.fuelType.toLowerCase().includes("92")) fuelColor = "bg-green-600";
-                if(tank.fuelType.toLowerCase().includes("95")) fuelColor = "bg-red-600";
-                if(tank.fuelType.toLowerCase().includes("diesel") || tank.fuelType.toLowerCase().includes("hsd")) fuelColor = "bg-amber-600";
+                if (tank.fuelType.toLowerCase().includes("92")) fuelColor = "bg-green-600";
+                if (tank.fuelType.toLowerCase().includes("95")) fuelColor = "bg-red-600";
+                if (tank.fuelType.toLowerCase().includes("diesel") || tank.fuelType.toLowerCase().includes("hsd")) fuelColor = "bg-amber-600";
 
                 // --------------------------------------------------
-                // 🎴 (၁) GRID VIEW DESIGN တည်ဆောက်ပုံ (ဖုန်းဗားရှင်းအတွက် အပြည့်)
+                // 🎴 (A) GRID VIEW HTML ကတ်ပြားပုံစံ
                 // --------------------------------------------------
                 const gridCard = document.createElement('div');
                 gridCard.className = "bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 flex flex-col justify-between transition-all hover:shadow-md";
@@ -157,10 +160,10 @@
 
 
                 // --------------------------------------------------
-                // 📄 (၂) LIST VIEW DESIGN တည်ဆောက်ပုံ (အစ်ကိုကြီးတို့ မူရင်းအတိုင်း ဖုန်းအတွက် Responsive)
+                // 📄 (B) LIST VIEW HTML အပေါ်အောက် ဇယားပုံစံ
                 // --------------------------------------------------
                 const listRow = document.createElement('div');
-                listRow.className = "bg-white p-3 md:p-4 rounded-xl shadow-sm mb-3 border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-3 w-full box-sizing-border";
+                listRow.className = "bg-white p-3 md:p-4 rounded-xl shadow-sm mb-3 border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-3 w-full";
                 listRow.innerHTML = `
                     <div class="flex items-center justify-between md:justify-start gap-3 border-b md:border-b-0 pb-2 md:pb-0 border-gray-100 shrink-0">
                         <div class="flex items-center gap-2">
@@ -190,15 +193,24 @@
                 `;
                 listContainer.appendChild(listRow);
             });
+
+            // (၃) လက်ရှိ နှိပ်ထားသော View အလိုက် Display စနစ်ကို နောက်ဆုံးအဆင့်အဖြစ် စစ်ဆေးချုပ်လုပ်ပေးခြင်း
+            if (currentView === 'grid') {
+                gridContainer.style.display = 'grid';
+                listContainer.style.display = 'none';
+            } else {
+                gridContainer.style.display = 'none';
+                listContainer.style.display = 'block';
+            }
         }
 
-        // ပထမဆုံးအကြိမ် ဒေတာလှမ်းဆွဲခြင်း
+        // ပထမဆုံးအကြိမ် API မှ ဒေတာလှမ်းယူခြင်း
         fetch('/api/data')
             .then(res => res.json())
             .then(data => renderUI(data))
             .catch(err => console.error("Error loading data:", err));
 
-        // Real-time Socket Update
+        // Real-time ဒေတာ အပ်ဒိတ်များ ဝင်လာလျှင် လက်ခံခြင်း
         socket.on('dataUpdate', (data) => {
             renderUI(data);
         });
