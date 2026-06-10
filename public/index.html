@@ -4,66 +4,140 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Htoo Fuel Station - Tank Monitoring</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Padauk:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Padauk:wght=400;700&display=swap" rel="stylesheet">
    
     <style>
+        * { box-sizing: border-box; }
         html, body {
             max-width: 100%;
-            overflow-x: hidden; /* ဖုန်းထဲတွင် ဘေးတိုက်လွတ်ထွက်ခြင်းကို ပိတ်ထားသည် */
+            overflow-x: hidden;
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
             font-family: 'Padauk', sans-serif;
-            background-color: #0f172a; /* ဆိုင်တစ်ခုလုံးကို Dark Mode နောက်ခံအမည်းရောင် ချုပ်ထားသည် */
+            background-color: #0f172a; /* Premium Dark Mode */
+            color: #f1f5f9;
         }
-        * {
-            box-sizing: border-box;
+        body { padding: 15px; }
+        .max-container { max-width: 1024px; margin: 0 auto; }
+       
+        /* 🏢 Header Style */
+        .header-card {
+            background-color: #1e293b;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            border-left: 8px solid #f97316;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
+        }
+        .header-logo { width: 70px; height: 70px; border-radius: 12px; object-cover: cover; }
+        .header-title { margin: 0; font-size: 22px; font-weight: bold; color: #ffffff; }
+        .header-sub { margin: 3px 0 0 0; font-size: 15px; color: #94a3b8; }
+        .header-phone { margin: 3px 0 0 0; font-size: 13px; color: #64748b; }
+
+        /* 🎛️ Control Bar & Switch Buttons */
+        .control-bar {
+            background-color: #1e293b;
+            padding: 12px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2);
+        }
+        .control-title { font-size: 16px; font-weight: bold; color: #e2e8f0; display: flex; align-items: center; gap: 8px; margin: 0; }
+        .control-dot { width: 10px; height: 20px; background-color: #f97316; border-radius: 4px; }
+       
+        .switch-box { background-color: #0f172a; padding: 4px; border-radius: 8px; display: flex; border: 1px solid #334155; }
+        .switch-btn {
+            background: none; border: none; padding: 6px 14px; font-size: 12px; font-weight: bold;
+            color: #94a3b8; cursor: pointer; border-radius: 6px; transition: all 0.2s;
+        }
+        .switch-btn.active { background-color: #f97316; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+
+        /* 🎴 GRID VIEW LAYOUT */
+        .grid-layout { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; width: 100%; }
+        .grid-card { background-color: #1e293b; border-radius: 16px; overflow: hidden; border: 1px solid #334155; display: flex; flex-col: column; justify-content: space-between; }
+        .card-head { background-color: #0f172a; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; }
+        .card-body { padding: 16px; }
+       
+        /* 📄 LIST VIEW LAYOUT */
+        .list-layout { display: none; width: 100%; }
+        .list-row {
+            background-color: #1e293b; padding: 14px; border-radius: 12px; margin-bottom: 12px;
+            border: 1px solid #334155; display: flex; align-items: center; justify-content: space-between; gap: 15px;
+        }
+        .list-left { display: flex; align-items: center; gap: 10px; min-width: 150px; }
+        .list-center { flex: 1; }
+        .list-right { display: flex; align-items: center; gap: 10px; justify-content: flex-end; }
+
+        /* 🔋 Progress Bar & Badges */
+        .badge-tank { background-color: #475569; color: white; padding: 3px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; }
+        .badge-fuel { padding: 3px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; color: white; }
+        .progress-container { width: 100%; background-color: #0f172a; height: 10px; border-radius: 5px; overflow: hidden; margin: 10px 0; position: relative; }
+        .progress-bar { height: 100%; border-radius: 5px; transition: width 0.5s ease-in-out; }
+       
+        /* 📊 Data Box Styles */
+        .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+        .v-box { padding: 8px; border-radius: 10px; text-align: center; font-size: 13px; }
+        .v-box-blue { background-color: rgba(30, 58, 138, 0.4); border: 1px solid #1e40af; color: #93c5fd; }
+        .v-box-green { background-color: rgba(6, 78, 59, 0.4); border: 1px solid #065f46; color: #6ee7b7; }
+        .v-label { display: block; font-size: 10px; font-weight: bold; opacity: 0.8; margin-bottom: 2px; }
+        .v-num { font-size: 14px; font-weight: bold; }
+
+        /* Fuel Colors */
+        .f-92 { background-color: #059669; }
+        .f-95 { background-color: #dc2626; }
+        .f-diesel { background-color: #d97706; }
+        .f-default { background-color: #475569; }
+
+        /* Phone Responsive */
+        @media (max-width: 640px) {
+            .header-card { flex-direction: column; text-align: center; }
+            .list-row { flex-direction: column; align-items: stretch; gap: 10px; }
+            .list-left { border-bottom: 1px solid #334155; padding-bottom: 8px; justify-content: space-between; }
+            .list-right { justify-content: space-between; }
+            .list-right .v-box { flex: 1; }
         }
     </style>
 </head>
-<body class="p-3 md:p-6 text-slate-100">
+<body>
 
-    <div class="max-w-5xl mx-auto bg-slate-800 rounded-2xl shadow-lg p-4 md:p-6 mb-5 flex flex-col sm:flex-row items-center gap-4 border-l-8 border-orange-500">
-        <img id="stationLogo" src="https://placehold.co/100x100/orange/white?text=HTOO" alt="Logo" class="w-16 h-16 md:w-20 md:h-20 rounded-xl object-cover shadow-sm ring-2 ring-slate-700">
-        <div class="text-center sm:text-left">
-            <h1 id="stationName" class="text-xl md:text-2xl font-bold text-slate-100">Htoo Fuel Station</h1>
-            <p id="stationBranch" class="text-slate-400 text-sm md:text-base">ပြင်ဦးလွင်ဘဏ်ခွဲ</p>
-            <p id="stationPhone" class="text-slate-500 text-xs md:text-sm">09-123456789</p>
-        </div>
-    </div>
-
-    <div class="max-w-5xl mx-auto mb-5 flex flex-col sm:flex-row justify-between items-center bg-slate-800 p-3 rounded-xl shadow-md gap-3">
-        <h2 class="text-base md:text-lg font-bold text-slate-200 flex items-center gap-2">
-            <span class="w-2.5 h-5 bg-orange-500 rounded-full inline-block"></span>
-            ဆီတိုင်ကီများ၏ လက်ရှိအခြေအနေ
-        </h2>
-       
-        <div class="flex bg-slate-900 p-1 rounded-lg border border-slate-700">
-            <button id="btnGrid" onclick="switchView('grid')" class="px-4 py-1.5 rounded-md text-xs font-bold transition-all bg-orange-600 text-white shadow-md">
-                📱 Grid View
-            </button>
-            <button id="btnList" onclick="switchView('list')" class="px-4 py-1.5 rounded-md text-xs font-bold transition-all text-slate-400 hover:text-slate-200">
-                📄 List View
-            </button>
-        </div>
-    </div>
-
-    <div class="max-w-5xl mx-auto">
-       
-        <div id="loadingText" class="text-center text-slate-500 py-8 text-sm">အချက်အလက်များ ဆွဲယူနေပါသည်...</div>
-
-        <div id="gridViewContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
+    <div class="max-container">
+        <div class="header-card">
+            <img id="stationLogo" src="https://placehold.co/100x100/orange/white?text=HTOO" alt="Logo" class="header-logo">
+            <div>
+                <h1 id="stationName" class="header-title">Htoo Fuel Station</h1>
+                <p id="stationBranch" class="header-sub">ပြင်ဦးလွင်ဘဏ်ခွဲ</p>
+                <p id="stationPhone" class="header-phone">09-123456789</p>
             </div>
+        </div>
 
-        <div id="listViewContainer" class="hidden w-full">
+        <div class="control-bar">
+            <h2 class="control-title">
+                <span class="control-dot"></span>
+                ဆီတိုင်ကီများ၏ လက်ရှိအခြေအနေ
+            </h2>
+            <div class="switch-box">
+                <button id="btnGrid" onclick="switchView('grid')" class="switch-btn active">📱 Grid View</button>
+                <button id="btnList" onclick="switchView('list')" class="switch-btn">📄 List View</button>
             </div>
+        </div>
+
+        <div id="loadingText" style="text-align: center; color: #64748b; padding: 20px; font-size: 14px;">အချက်အလက်များ ဆွဲယူနေပါသည်...</div>
+
+        <div id="gridViewContainer" class="grid-layout"></div>
+
+        <div id="listViewContainer" class="list-layout"></div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        let currentView = 'grid'; // စစချင်း Grid View ကို ပြထားမည်
+        let currentView = 'grid';
         let globalData = null;
 
         // View ပြောင်းလဲပေးသည့် လုပ်ဆောင်ချက်
@@ -75,25 +149,20 @@
             const listBox = document.getElementById('listViewContainer');
 
             if (view === 'grid') {
-                // Button Style ကို Grid ဘက်သို့ လိမ္မော်ရောင်ပြောင်းသည်
-                btnGrid.className = "px-4 py-1.5 rounded-md text-xs font-bold transition-all bg-orange-600 text-white shadow-md";
-                btnList.className = "px-4 py-1.5 rounded-md text-xs font-bold transition-all text-slate-400 hover:text-slate-200";
-               
+                btnGrid.classList.add('active');
+                btnList.classList.remove('active');
                 gridBox.style.display = 'grid';
                 listBox.style.display = 'none';
             } else {
-                // Button Style ကို List ဘက်သို့ လိမ္မော်ရောင်ပြောင်းသည်
-                btnGrid.className = "px-4 py-1.5 rounded-md text-xs font-bold transition-all text-slate-400 hover:text-slate-200";
-                btnList.className = "px-4 py-1.5 rounded-md text-xs font-bold transition-all bg-orange-600 text-white shadow-md";
-               
+                btnGrid.classList.remove('active');
+                btnList.classList.add('active');
                 gridBox.style.display = 'none';
                 listBox.style.display = 'block';
             }
-           
             if (globalData) renderUI(globalData);
         }
 
-        // UI ကို Dark Mode ဖြင့် တည်ဆောက်ပြသပေးသည့် ပင်မ Function
+        // UI ကို Dark Mode အစစ်ဖြင့် တည်ဆောက်ပြသပေးသည့် ပင်မ Function
         function renderUI(data) {
             globalData = data;
             document.getElementById('loadingText').style.display = 'none';
@@ -114,81 +183,73 @@
             data.tanks.forEach(tank => {
                 const percentage = Math.min(Math.round((tank.currentLiter / tank.maxCapacity) * 100), 100) || 0;
                
-                // ဆီအမျိုးအစားအလိုက် ခွဲခြားပြသမည့် အရောင်များ
-                let fuelColor = "bg-slate-600";
-                if (tank.fuelType.toLowerCase().includes("92")) fuelColor = "bg-emerald-600";
-                if (tank.fuelType.toLowerCase().includes("95")) fuelColor = "bg-rose-600";
-                if (tank.fuelType.toLowerCase().includes("diesel") || tank.fuelType.toLowerCase().includes("hsd")) fuelColor = "bg-amber-600";
+                // ဆီအမျိုးအစားအရောင် Class သတ်မှတ်ခြင်း
+                let fuelClass = "f-default";
+                if (tank.fuelType.toLowerCase().includes("92")) fuelClass = "f-92";
+                if (tank.fuelType.toLowerCase().includes("95")) fuelClass = "f-95";
+                if (tank.fuelType.toLowerCase().includes("diesel") || tank.fuelType.toLowerCase().includes("hsd")) fuelClass = "f-diesel";
 
                 // --------------------------------------------------
-                // 🎴 (A) GRID VIEW DESIGN (Dark Mode)
+                // 🎴 (A) GRID VIEW DESIGN
                 // --------------------------------------------------
                 const gridCard = document.createElement('div');
-                gridCard.className = "bg-slate-800 rounded-2xl shadow-md overflow-hidden border border-slate-700/50 flex flex-col justify-between transition-all hover:shadow-lg";
+                gridCard.className = "grid-card";
                 gridCard.innerHTML = `
-                    <div class="p-4 bg-slate-900/50 border-b border-slate-700/50 flex justify-between items-center">
-                        <span class="text-xs font-bold bg-slate-700 text-slate-100 px-2.5 py-1 rounded-md">Tank ${tank.tankNumber}</span>
-                        <span class="text-xs font-bold text-white px-2.5 py-1 rounded-md ${fuelColor}">${tank.fuelType}</span>
+                    <div class="card-head">
+                        <span class="badge-tank">Tank ${tank.tankNumber}</span>
+                        <span class="badge-fuel ${fuelClass}">${tank.fuelType}</span>
                     </div>
-                    <div class="p-4">
-                        <div class="flex justify-between text-[11px] text-slate-400 mb-1.5">
+                    <div class="card-body">
+                        <div style="display: flex; justify-content: space-between; font-size: 11px; color: #94a3b8; margin-bottom: 4px;">
                             <span>ဆီပမာဏ (${percentage}%)</span>
                             <span>Max: ${tank.maxCapacity.toLocaleString()} L</span>
                         </div>
-                        <div class="w-full bg-slate-900 rounded-full h-2 overflow-hidden mb-4">
-                            <div class="${fuelColor} h-2 rounded-full transition-all duration-500" style="width: ${percentage}%"></div>
+                        <div class="progress-container">
+                            <div class="progress-bar ${fuelClass}" style="width: ${percentage}%"></div>
                         </div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <div class="bg-blue-950/40 p-2 rounded-xl text-center border border-blue-900/50">
-                                <span class="block text-[10px] text-blue-400 font-bold">📏 လက်ရှိ CM</span>
-                                <span class="text-sm font-black text-blue-300">${tank.currentCM}</span>
+                        <div class="data-grid">
+                            <div class="v-box v-box-blue">
+                                <span class="v-label">📏 လက်ရှိ CM</span>
+                                <span class="v-num">${tank.currentCM}</span>
                             </div>
-                            <div class="bg-emerald-950/40 p-2 rounded-xl text-center border border-emerald-900/50">
-                                <span class="block text-[10px] text-emerald-400 font-bold">🛢️ လက်ရှိ လီတာ</span>
-                                <span class="text-sm font-black text-emerald-300">${tank.currentLiter.toLocaleString()}</span>
+                            <div class="v-box v-box-green">
+                                <span class="v-label">🛢️ လက်ရှိ လီတာ</span>
+                                <span class="v-num">${tank.currentLiter.toLocaleString()}</span>
                             </div>
                         </div>
                     </div>
                 `;
                 gridContainer.appendChild(gridCard);
 
-
                 // --------------------------------------------------
-                // 📄 (B) LIST VIEW DESIGN (Dark Mode)
+                // 📄 (B) LIST VIEW DESIGN
                 // --------------------------------------------------
                 const listRow = document.createElement('div');
-                listRow.className = "bg-slate-800 p-3 md:p-4 rounded-xl shadow-md mb-3 border border-slate-700/50 flex flex-col md:flex-row md:items-center justify-between gap-3 w-full";
+                listRow.className = "list-row";
                 listRow.innerHTML = `
-                    <div class="flex items-center justify-between md:justify-start gap-3 border-b md:border-b-0 pb-2 md:pb-0 border-slate-700/50 shrink-0">
-                        <div class="flex items-center gap-2">
-                            <span class="text-xs font-bold bg-slate-700 text-slate-100 px-2.5 py-1.5 rounded-lg">Tank ${tank.tankNumber}</span>
-                            <span class="text-xs font-bold text-white px-2.5 py-1.5 rounded-lg ${fuelColor}">${tank.fuelType}</span>
-                        </div>
-                        <span class="text-sm font-black text-slate-300 md:hidden">${percentage}%</span>
+                    <div class="list-left">
+                        <span class="badge-tank">Tank ${tank.tankNumber}</span>
+                        <span class="badge-fuel ${fuelClass}">${tank.fuelType}</span>
+                        <span style="font-size: 13px; font-weight: bold; color: #94a3b8;" class="sm-show-only">${percentage}%</span>
                     </div>
-
-                    <div class="w-full md:flex-1 md:mx-4">
-                        <div class="w-full bg-slate-900 rounded-full h-2.5 overflow-hidden">
-                            <div class="${fuelColor} h-2.5 rounded-full transition-all duration-500" style="width: ${percentage}%"></div>
+                    <div class="list-center">
+                        <div class="progress-container" style="margin: 0;">
+                            <div class="progress-bar ${fuelClass}" style="width: ${percentage}%"></div>
                         </div>
                     </div>
-
-                    <div class="flex items-center justify-between md:justify-end gap-2.5 w-full md:w-auto shrink-0">
-                        <div class="bg-blue-950/40 text-blue-300 px-3 py-2 rounded-xl text-xs md:text-sm flex items-center gap-1.5 font-bold border border-blue-900/50 flex-1 md:flex-none justify-center min-w-[85px]">
-                            <span>📏</span> <span>${tank.currentCM} CM</span>
+                    <div class="list-right">
+                        <div class="v-box v-box-blue" style="padding: 5px 12px; min-width: 85px;">
+                            <span>📏 ${tank.currentCM} CM</span>
                         </div>
-                        <div class="bg-emerald-950/40 text-emerald-300 px-3 py-2 rounded-xl text-xs md:text-sm flex items-center gap-1.5 font-bold border border-emerald-900/50 flex-1 md:flex-none justify-center min-w-[135px]">
-                            <span>🛢️</span> <span>${tank.currentLiter.toLocaleString()} / ${tank.maxCapacity.toLocaleString()} L</span>
-                        </div>
-                        <div class="hidden md:block text-right font-black text-slate-300 text-sm min-w-[45px]">
-                            <span>${percentage}%</span>
+                        <div class="v-box v-box-green" style="padding: 5px 12px; min-width: 140px;">
+                            <span>🛢️ ${tank.currentLiter.toLocaleString()} / ${tank.maxCapacity.toLocaleString()} L</span>
                         </div>
                     </div>
                 `;
                 listContainer.appendChild(listRow);
             });
 
-            // View အဖွင့်အပိတ်ကို စစ်ဆေးခြင်း
+            // View Control
             if (currentView === 'grid') {
                 gridContainer.style.display = 'grid';
                 listContainer.style.display = 'none';
@@ -203,9 +264,7 @@
             .then(data => renderUI(data))
             .catch(err => console.error("Error loading data:", err));
 
-        socket.on('dataUpdate', (data) => {
-            renderUI(data);
-        });
+        socket.on('dataUpdate', (data) => { renderUI(data); });
     </script>
 </body>
 </html>
