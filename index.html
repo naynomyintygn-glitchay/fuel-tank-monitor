@@ -1,233 +1,129 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Htoo Fuel Station - Live Monitoring</title>
-    <link href="https://fonts.googleapis.com/css2?family=Padauk:wght=400;700&display=swap" rel="stylesheet">
+    <title>Htoo Fuel - Live Monitor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Padauk:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        /* CSS Variables for Dynamic Dark/Light Theme Switching */
-        :root[data-theme="dark"] {
-            --bg-main: #0f172a; --bg-card: #1e293b; --bg-inner: #0f172a;
-            --text-main: #f1f5f9; --text-muted: #94a3b8; --border-color: #334155;
-            --header-border: #f97316;
+        body { font-family: 'Padauk', sans-serif; background-color: #0f172a; color: white; margin: 0; padding: 20px; }
+        .container { max-width: 1100px; margin: 0 auto; }
+        
+        .header { 
+            background-color: #1e293b; padding: 20px; border-radius: 15px; 
+            border-left: 10px solid #f97316; margin-bottom: 30px;
+            display: flex; justify-content: space-between; align-items: center;
         }
-        :root[data-theme="light"] {
-            --bg-main: #f8f9fa; --bg-card: #ffffff; --bg-inner: #f1f3f5;
-            --text-main: #212529; --text-muted: #6c757d; --border-color: #dee2e6;
-            --header-border: #007bff;
-        }
+        .header h1 { margin: 0; font-size: 28px; }
+        .header p { margin: 5px 0 0 0; color: #94a3b8; }
 
-        * { box-sizing: border-box; transition: background-color 0.3s, color 0.3s; }
-        html, body { max-width: 100%; overflow-x: hidden; margin: 0; padding: 0; font-family: 'Padauk', sans-serif; background-color: var(--bg-main); color: var(--text-main); }
-        body { padding: 15px; }
-        .max-container { max-width: 1024px; margin: 0 auto; }
-       
-        /* 🏢 Header Area Styling */
-        .header-card {
-            background-color: var(--bg-card); border-radius: 16px; padding: 20px; margin-bottom: 15px;
-            display: flex; align-items: center; justify-content: space-between; gap: 20px;
-            border-left: 8px solid var(--header-border); box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        
+        .tank-card { 
+            background-color: #1e293b; border-radius: 20px; padding: 20px; 
+            border: 1px solid #334155; position: relative; overflow: hidden;
         }
-        .header-info { display: flex; align-items: center; gap: 20px; }
-        .header-logo { width: 70px; height: 70px; border-radius: 12px; object-fit: cover; }
-        .header-title { margin: 0; font-size: 22px; font-weight: bold; }
-        .header-sub { margin: 3px 0 0 0; font-size: 15px; color: var(--text-muted); }
+        .tank-name { font-size: 14px; color: #94a3b8; font-weight: bold; text-transform: uppercase; }
+        .fuel-type { font-size: 22px; font-weight: bold; margin-bottom: 15px; }
+        
+        /* Progress Bar */
+        .progress-bg { background-color: #0f172a; height: 12px; border-radius: 10px; margin: 15px 0; overflow: hidden; }
+        .progress-fill { height: 100%; border-radius: 10px; transition: width 1s ease-in-out; }
+        
+        .stats { display: flex; justify-content: space-between; margin-top: 15px; }
+        .val-group { text-align: center; flex: 1; }
+        .val-label { font-size: 11px; color: #64748b; display: block; }
+        .val-num { font-size: 18px; font-weight: bold; color: #f97316; }
 
-        /* ⏱️ Last Updated History Bar */
-        .history-bar {
-            background-color: var(--bg-card); padding: 10px 20px; border-radius: 10px; margin-bottom: 15px;
-            display: flex; align-items: center; justify-content: space-between; border: 1px solid var(--border-color);
-            font-size: 13px; font-weight: bold;
-        }
-        .history-time { color: #f97316; }
-
-        /* 🎛️ Control Panel (Theme + Layout View Switch) */
-        .control-bar {
-            background-color: var(--bg-card); padding: 12px 20px; border-radius: 12px; margin-bottom: 20px;
-            display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        }
-        .switch-box { background-color: var(--bg-inner); padding: 4px; border-radius: 8px; display: flex; border: 1px solid var(--border-color); }
-        .switch-btn {
-            background: none; border: none; padding: 6px 14px; font-size: 12px; font-weight: bold;
-            color: var(--text-muted); cursor: pointer; border-radius: 6px;
-        }
-        .switch-btn.active { background-color: #f97316; color: white; }
-
-        /* 🎴 GRID CYLINDRICAL TANK VIEW */
-        .grid-layout { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; width: 100%; }
-        .grid-card { background-color: var(--bg-card); border-radius: 16px; overflow: hidden; border: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: space-between; }
-        .card-head { background-color: var(--bg-inner); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); }
-        .card-body { padding: 16px; display: flex; flex-direction: column; align-items: center; }
-       
-        /* 🛢️ 3D Cylindrical Tank UI Component */
-        .tank-wrapper {
-            width: 120px; height: 160px; background: #090d16; border: 3px solid #475569;
-            border-radius: 20px / 12px; position: relative; overflow: hidden; margin: 15px 0;
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
-        }
-        .tank-fluid { position: absolute; bottom: 0; left: 0; width: 100%; height: 0%; transition: height 0.8s ease-in-out; }
-        .tank-pct-text {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            font-size: 20px; font-weight: 900; color: #ffffff; text-shadow: 0 2px 5px rgba(0,0,0,1); z-index: 10;
-        }
-
-        /* 📄 LIST VIEW LAYOUT */
-        .list-layout { display: none; width: 100%; }
-        .list-row {
-            background-color: var(--bg-card); padding: 14px; border-radius: 12px; margin-bottom: 12px;
-            border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; gap: 15px;
-        }
-        .list-left { display: flex; align-items: center; gap: 10px; min-width: 150px; }
-        .list-center { flex: 1; }
-        .progress-container { width: 100%; background-color: var(--bg-inner); height: 12px; border-radius: 6px; overflow: hidden; }
-        .progress-bar { height: 100%; border-radius: 6px; transition: width 0.8s ease-in-out; }
-        .list-right { display: flex; align-items: center; gap: 10px; }
-
-        /* Fuel Dynamic Styling */
-        .badge-tank { background-color: #475569; color: white; padding: 3px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; }
-        .badge-fuel { padding: 3px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; color: white; min-width: 65px; text-align: center; }
-        .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin-top: 5px; }
-        .v-box { padding: 8px; border-radius: 10px; text-align: center; font-size: 13px; border: 1px solid var(--border-color); }
-        .v-box-blue { background-color: rgba(30, 58, 138, 0.15); color: #3b82f6; font-weight: bold; }
-        .v-box-green { background-color: rgba(6, 78, 59, 0.15); color: #10b981; font-weight: bold; }
-        .v-label { display: block; font-size: 10px; opacity: 0.8; margin-bottom: 2px; }
-
-        /* Fuel Type Base Colors */
-        .f-92 { background-color: #059669 !important; }       
-        .f-95 { background-color: #dc2626 !important; }       
-        .f-diesel { background-color: #d97706 !important; }   
-        .f-default { background-color: #64748b; }
-
-        @media (max-width: 640px) {
-            .header-card { flex-direction: column; text-align: center; }
-            .list-row { flex-direction: column; align-items: stretch; gap: 10px; }
-            .list-right { justify-content: space-between; }
-        }
+        /* Colors based on fuel */
+        .f-92 { background-color: #10b981; } /* Green */
+        .f-95 { background-color: #ef4444; } /* Red */
+        .f-diesel { background-color: #f59e0b; } /* Orange/Yellow */
+        .f-default { background-color: #6366f1; }
     </style>
 </head>
 <body>
 
-    <div class="max-container">
-        <div class="header-card">
-            <div class="header-info">
-                <img id="stationLogo" src="https://placehold.co/100x100/orange/white?text=HTOO" alt="Logo" class="header-logo">
-                <div>
-                    <h1 id="stationName" class="header-title">Htoo Fuel Station</h1>
-                    <p id="stationBranch" class="header-sub">Live Tank Monitoring System</p>
-                </div>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1 id="stName">Htoo Fuel Station</h1>
+                <p id="stBranch">Loading...</p>
             </div>
-            <div class="switch-box">
-                <button onclick="toggleTheme('light')" id="themeLight" class="switch-btn">☀️ Light</button>
-                <button onclick="toggleTheme('dark')" id="themeDark" class="switch-btn active">🌙 Dark</button>
+            <div style="text-align: right;">
+                <div id="liveClock" style="font-size: 18px; font-weight: bold;"></div>
+                <p>Live Monitoring</p>
             </div>
         </div>
 
-        <div class="history-bar">
-            <span>📊 စနစ်၏ လက်ရှိအခြေအနေ</span>
-            <span>နောက်ဆုံးပြင်ဆင်မှု - <span id="lastUpdated" class="history-time">မရှိသေးပါ</span></span>
+        <div class="grid" id="tankGrid">
+            <!-- Tanks will appear here -->
         </div>
-
-        <div class="control-bar">
-            <span style="font-weight: bold;">ဆီတိုင်ကီများ စာရင်း</span>
-            <div class="switch-box">
-                <button id="btnGrid" onclick="switchView('grid')" class="switch-btn active">🛢️ Cylinder View</button>
-                <button id="btnList" onclick="switchView('list')" class="switch-btn">📄 List View</button>
-            </div>
-        </div>
-
-        <div id="gridViewContainer" class="grid-layout"></div>
-        <div id="listViewContainer" class="list-layout"></div>
     </div>
 
-    <script src="/socket.io/socket.io.js"></script>
     <script>
-        const socket = io();
-        let currentView = 'grid';
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('liveClock').innerText = now.toLocaleString();
+        }
+        setInterval(updateClock, 1000);
 
-        function toggleTheme(theme) {
-            document.documentElement.setAttribute('data-theme', theme);
-            document.getElementById('themeLight').classList.toggle('active', theme === 'light');
-            document.getElementById('themeDark').classList.toggle('active', theme === 'dark');
+        function fetchData() {
+            fetch('/api/data')
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('stName').innerText = data.station.name;
+                    document.getElementById('stBranch').innerText = data.station.branchName;
+
+                    const grid = document.getElementById('tankGrid');
+                    grid.innerHTML = '';
+
+                    data.tanks.forEach(tank => {
+                        const percent = Math.min(Math.round((tank.currentLiter / tank.maxCapacity) * 100), 100) || 0;
+                        
+                        let colorClass = "f-default";
+                        const ft = tank.fuelType.toLowerCase();
+                        if (ft.includes("92")) colorClass = "f-92";
+                        else if (ft.includes("95")) colorClass = "f-95";
+                        else if (ft.includes("diesel") || ft.includes("hsd")) colorClass = "f-diesel";
+
+                        grid.innerHTML += `
+                            <div class="tank-card">
+                                <div class="tank-name">Tank ${tank.tankNumber}</div>
+                                <div class="fuel-type">${tank.fuelType}</div>
+                                
+                                <div style="display: flex; justify-content: space-between; font-size: 12px;">
+                                    <span>Level</span>
+                                    <span>${percent}%</span>
+                                </div>
+                                <div class="progress-bg">
+                                    <div class="progress-fill ${colorClass}" style="width: ${percent}%"></div>
+                                </div>
+
+                                <div class="stats">
+                                    <div class="val-group">
+                                        <span class="val-label">လက်ရှိ CM</span>
+                                        <span class="val-num">${tank.currentCM}</span>
+                                    </div>
+                                    <div class="val-group" style="border-left: 1px solid #334155; border-right: 1px solid #334155;">
+                                        <span class="val-label">လက်ရှိ လီတာ</span>
+                                        <span class="val-num">${Number(tank.currentLiter).toLocaleString()}</span>
+                                    </div>
+                                    <div class="val-group">
+                                        <span class="val-label">အပြည့်ဆံ့</span>
+                                        <span class="val-num" style="color:#94a3b8">${Number(tank.maxCapacity).toLocaleString()}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                })
+                .catch(err => console.error("Error:", err));
         }
 
-        function switchView(view) {
-            currentView = view;
-            document.getElementById('btnGrid').classList.toggle('active', view === 'grid');
-            document.getElementById('btnList').classList.toggle('active', view === 'list');
-            document.getElementById('gridViewContainer').style.display = view === 'grid' ? 'grid' : 'none';
-            document.getElementById('listViewContainer').style.display = view === 'list' ? 'block' : 'none';
-        }
-
-        function renderUI(data) {
-            if(!data) return;
-            if(data.lastUpdated) document.getElementById('lastUpdated').innerText = data.lastUpdated;
-
-            const gridContainer = document.getElementById('gridViewContainer');
-            const listContainer = document.getElementById('listViewContainer');
-            gridContainer.innerHTML = ''; listContainer.innerHTML = '';
-
-            if (data.tanks && data.tanks.length > 0) {
-                data.tanks.forEach(tank => {
-                    const curLit = parseFloat(String(tank.currentLiter).replace(/,/g, '')) || 0;
-                    const maxCap = parseFloat(String(tank.maxCapacity).replace(/,/g, '')) || 30500;
-                    const percentage = Math.min(Math.round((curLit / maxCap) * 100), 100) || 0;
-                    const displayCM = tank.currentCM || "0";
-                   
-                    let fuelClass = "f-default";
-                    const rawFuelType = tank.fuelType ? String(tank.fuelType).toUpperCase() : "";
-                    if (rawFuelType.includes("92")) fuelClass = "f-92";
-                    else if (rawFuelType.includes("95")) fuelClass = "f-95";
-                    else if (rawFuelType.includes("DIESEL") || rawFuelType.includes("HSD") || rawFuelType.includes("PREMIUM")) fuelClass = "f-diesel";
-
-                    // Cylinder Card UI
-                    const gridCard = document.createElement('div');
-                    gridCard.className = "grid-card";
-                    gridCard.innerHTML = `
-                        <div class="card-head">
-                            <span class="badge-tank">Tank ${tank.tankNumber}</span>
-                            <span class="badge-fuel ${fuelClass}">${tank.fuelType}</span>
-                        </div>
-                        <div class="card-body">
-                            <div style="font-size:11px; color:var(--text-muted); width:100%; display:flex; justify-content:space-between;">
-                                <span>အပြည့်ဆံ့ပမာဏ:</span><span>${maxCap.toLocaleString()} L</span>
-                            </div>
-                            <div class="tank-wrapper">
-                                <div class="tank-pct-text">${percentage}%</div>
-                                <div class="tank-fluid ${fuelClass}" style="height: ${percentage}%"></div>
-                            </div>
-                            <div class="data-grid">
-                                <div class="v-box v-box-blue"><span class="v-label">📏 လက်ရှိ CM</span><span>${displayCM} cm</span></div>
-                                <div class="v-box v-box-green"><span class="v-label">🛢️ လက်ရှိ Liter</span><span>${curLit.toLocaleString()} L</span></div>
-                            </div>
-                        </div>
-                    `;
-                    gridContainer.appendChild(gridCard);
-
-                    // List Row UI
-                    const listRow = document.createElement('div');
-                    listRow.className = "list-row";
-                    listRow.innerHTML = `
-                        <div class="list-left">
-                            <span class="badge-tank">Tank ${tank.tankNumber}</span>
-                            <span class="badge-fuel ${fuelClass}">${tank.fuelType}</span>
-                            <span style="font-weight:bold;">${percentage}%</span>
-                        </div>
-                        <div class="list-center">
-                            <div class="progress-container"><div class="progress-bar ${fuelClass}" style="width: ${percentage}%"></div></div>
-                        </div>
-                        <div class="list-right">
-                            <div class="v-box v-box-blue" style="padding:4px 10px;"><span>${displayCM} CM</span></div>
-                            <div class="v-box v-box-green" style="padding:4px 10px;"><span>${curLit.toLocaleString()} / ${maxCap.toLocaleString()} L</span></div>
-                        </div>
-                    `;
-                    listContainer.appendChild(listRow);
-                });
-            }
-        }
-
-        fetch('/api/data').then(res => res.json()).then(data => renderUI(data)).catch(err => console.error(err));
-        socket.on('dataUpdate', (data) => { renderUI(data); });
+        // ၅ စက္ကန့်တစ်ခါ အလိုအလျောက် Data အသစ်ဆွဲမည်
+        setInterval(fetchData, 5000);
+        fetchData();
     </script>
 </body>
 </html>
