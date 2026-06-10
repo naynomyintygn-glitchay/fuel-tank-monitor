@@ -13,9 +13,15 @@ const upload = multer({ dest: 'uploads/' });
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Database Fallback Store Memory
+// Persistent memory object store
 let systemDatabase = {
     lastUpdated: "မရှိသေးပါ",
+    station: {
+        name: "Htoo Fuel Station",
+        branchName: "ပြင်ဦးလွင်ဘဏ်ခွဲ",
+        phoneNumber: "09-123456789",
+        logoUrl: "https://placehold.co/100x100/orange/white?text=HTOO"
+    },
     tanks: [
         { tankNumber: 1, fuelType: "HSD", currentCM: "220", currentLiter: "22500", maxCapacity: "30500" },
         { tankNumber: 2, fuelType: "Premium Diesel", currentCM: "220", currentLiter: "22500", maxCapacity: "30500" },
@@ -26,43 +32,44 @@ let systemDatabase = {
     ]
 };
 
-// API: Get Live Monitor Data
+// API: Get Live Monitor State
 app.get('/api/data', (req, res) => {
     res.json(systemDatabase);
 });
 
-// API: Save Manual Inputs
+// API: Save Manual + Station Configuration Data
 app.post('/api/manual-save', (req, res) => {
-    const { tanks } = req.body;
+    const { station, tanks } = req.body;
     const now = new Date();
-    systemDatabase.lastUpdated = now.toLocaleDateString() + " " + now.toLocaleTimeString();
-    systemDatabase.tanks = tanks;
    
-    io.emit('dataUpdate', systemDatabase); // Broadcast Live Frontend Update
-    res.json({ status: "success" });
+    systemDatabase.lastUpdated = now.toLocaleDateString() + " " + now.toLocaleTimeString();
+    if(station) systemDatabase.station = station;
+    if(tanks) systemDatabase.tanks = tanks;
+   
+    io.emit('dataUpdate', systemDatabase); // Emit live shift
+    res.json({ status: "success", data: systemDatabase });
 });
 
-// API: Processing Excel - Read Sheet per Tank and get LAST VALID ROW values
+// API: Process uploaded excel (Sheets parse last matching numeric row)
 app.post('/api/excel-upload', upload.single('excelFile'), (req, res) => {
     try {
         const workbook = xlsx.readFile(req.file.path);
-        const sheetNames = workbook.SheetNames; // Sheet list (Tank 1, Tank 2, ...)
+        const sheetNames = workbook.SheetNames;
        
         let updatedTanks = [];
 
         sheetNames.forEach((sheetName, index) => {
-            if(index >= 6) return; // စနစ်တွင် တိုင်ကီ ၆ လုံးသာ ကန့်သတ်ဖတ်ရှုမည်
+            if(index >= 6) return; // 6 Tanks Bound limit
            
             const sheet = workbook.Sheets[sheetName];
-            // Sheet တစ်ခုလုံးကို Row မျိုးစုံဖတ်နိုင်ရန် 2D Array ပြောင်းလဲခြင်း
             const matrixData = xlsx.utils.sheet_to_json(sheet, { header: 1 });
            
             let lastValidCM = "0";
             let lastValidLiter = "0";
-            let detectedCapacity = 30500; // Fallback default
+            let detectedCapacity = 30500;
             let detectedProduct = "Unknown";
 
-            // စာမျက်နှာအပေါ်ပိုင်း ခေါင်းစဉ်ဧရိယာမှ CAPACITY နှင့် PRODUCT ရှာဖွေခြင်း
+            // Header parse scanning loop
             matrixData.forEach(row => {
                 if(!row || row.length === 0) return;
                 const lineStr = row.join(" ").toUpperCase();
@@ -71,35 +78,36 @@ app.post('/api/excel-upload', upload.single('excelFile'), (req, res) => {
                     const match = lineStr.match(/\d+/);
                     if(match) detectedCapacity = parseInt(match[0]);
                 }
-                // ဆီအမျိုးအစားသတ်မှတ်ချက်ကို ရှာဖွေခြင်း
                 if(lineStr.includes("92 RON")) detectedProduct = "92 RON";
                 else if(lineStr.includes("95 RON")) detectedProduct = "95 RON";
                 else if(lineStr.includes("PREMIUM DIESEL") || lineStr.includes("PDO")) detectedProduct = "Premium Diesel";
                 else if(lineStr.includes("HSD") || lineStr.includes("DIESEL")) detectedProduct = "HSD";
             });
 
-            // 🌟 [အဓိကစနစ်] အောက်ဆုံး Row များမှ ကိန်းဂဏန်းစစ်စစ် ပါဝင်သော စာကြောင်းကို ပြောင်းပြန်လှန်၍ ရှာဖွေဖတ်ရှုခြင်း
+            // Parse back-loop algorithm to catch the last string pattern containing numerical values
             for (let i = matrixData.length - 1; i >= 0; i--) {
                 const currentRow = matrixData[i];
                 if (!currentRow || currentRow.length < 3) continue;
                
-                // Row ထဲက ကော်လံတွေကို စစ်ဆေးပြီး ဂဏန်းအမှန်ပါတာကို ယူခြင်း
                 const col1 = parseFloat(String(currentRow[1]).replace(/,/g, ''));
                 const col2 = parseFloat(String(currentRow[2]).replace(/,/g, ''));
 
                 if (!isNaN(col1) && !isNaN(col2) && col1 > 0 && col2 > 0) {
                     lastValidCM = String(currentRow[1]);
                     lastValidLiter = String(currentRow[2]);
-                    break; // နောက်ဆုံးစာကြောင်း တွေ့သည်နှင့် ရပ်တန့်မည်
+                    break;
                 }
             }
 
+            // Keep the previous static config maximum or type details if missing from text headers
+            const previousTank = systemDatabase.tanks.find(t => t.tankNumber == (index + 1));
+
             updatedTanks.push({
                 tankNumber: index + 1,
-                fuelType: detectedProduct !== "Unknown" ? detectedProduct : `Tank ${index + 1}`,
+                fuelType: detectedProduct !== "Unknown" ? detectedProduct : (previousTank ? previousTank.fuelType : `Tank ${index + 1}`),
                 currentCM: lastValidCM,
                 currentLiter: lastValidLiter,
-                maxCapacity: String(detectedCapacity)
+                maxCapacity: detectedCapacity !== 30500 ? String(detectedCapacity) : (previousTank ? previousTank.maxCapacity : "30500")
             });
         });
 
@@ -117,4 +125,5 @@ app.post('/api/excel-upload', upload.single('excelFile'), (req, res) => {
     }
 });
 
-server.listen(3000, () => console.log('Htoo Station Server running on port 3000'));
+server.listen(3000, () => console.log('Htoo ATG live system loaded on port 3000'));
+
