@@ -7,176 +7,365 @@
     <link href="[fonts.googleapis.com](https://fonts.googleapis.com/css2?family=Padauk:wght@400;700&display=swap)" rel="stylesheet">
     <script src="/socket.io/socket.io.js"></script>
     <style>
+        :root {
+            /* Dark Mode (Default) */
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-card: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+            --text-primary: #ffffff;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border-color: #334155;
+            --accent: #f97316;
+            --accent-hover: #ea580c;
+            --shadow: rgba(0,0,0,0.3);
+            --cylinder-bg: #0a0f1a;
+            --cylinder-border: #334155;
+        }
+        
+        [data-theme="light"] {
+            --bg-primary: #f1f5f9;
+            --bg-secondary: #ffffff;
+            --bg-card: linear-gradient(145deg, #ffffff 0%, #f1f5f9 100%);
+            --text-primary: #1e293b;
+            --text-secondary: #475569;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --accent: #ea580c;
+            --accent-hover: #c2410c;
+            --shadow: rgba(0,0,0,0.1);
+            --cylinder-bg: #e2e8f0;
+            --cylinder-border: #cbd5e1;
+        }
+        
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body { 
             font-family: 'Padauk', sans-serif; 
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            color: white; 
+            background: var(--bg-primary);
+            color: var(--text-primary); 
             min-height: 100vh;
-            padding: 20px; 
+            padding: 20px;
+            transition: all 0.3s ease;
         }
         
-        .container { max-width: 1200px; margin: 0 auto; }
+        .container { max-width: 1400px; margin: 0 auto; }
         
         /* Header */
         .header { 
-            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-            padding: 25px 30px; 
+            background: var(--bg-card);
+            padding: 20px 25px; 
             border-radius: 20px; 
-            border-left: 6px solid #f97316;
-            margin-bottom: 30px;
+            border-left: 6px solid var(--accent);
+            margin-bottom: 25px;
             display: flex; 
             justify-content: space-between; 
             align-items: center;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            box-shadow: 0 10px 40px var(--shadow);
+            border: 1px solid var(--border-color);
+            flex-wrap: wrap;
+            gap: 15px;
         }
         
-        .header-left { display: flex; align-items: center; gap: 20px; }
-        .header-logo { width: 70px; height: 70px; border-radius: 12px; object-fit: cover; border: 2px solid #f97316; }
-        .header h1 { font-size: 28px; color: #f97316; }
-        .header .branch { color: #94a3b8; font-size: 14px; margin-top: 5px; }
-        .header .phone { color: #64748b; font-size: 13px; }
+        .header-left { display: flex; align-items: center; gap: 15px; }
+        .header-logo { 
+            width: 60px; height: 60px; 
+            border-radius: 12px; 
+            object-fit: cover; 
+            border: 2px solid var(--accent); 
+        }
+        .header h1 { font-size: 24px; color: var(--accent); }
+        .header .branch { color: var(--text-secondary); font-size: 13px; margin-top: 3px; }
+        .header .phone { color: var(--text-muted); font-size: 12px; }
         
         .header-right { text-align: right; }
         .live-badge { 
             background: #22c55e; 
             color: white; 
-            padding: 6px 14px; 
+            padding: 5px 12px; 
             border-radius: 20px; 
-            font-size: 12px;
+            font-size: 11px;
             font-weight: bold;
             animation: pulse 2s infinite;
+            display: inline-block;
         }
         @keyframes pulse {
             0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
+            50% { opacity: 0.6; }
         }
-        .clock { font-size: 22px; font-weight: bold; color: #f97316; margin-top: 8px; }
-        .last-update { font-size: 11px; color: #64748b; margin-top: 4px; }
+        .clock { font-size: 20px; font-weight: bold; color: var(--accent); margin-top: 5px; }
+        .last-update { font-size: 10px; color: var(--text-muted); margin-top: 3px; }
         
-        /* Tank Grid */
+        /* Controls */
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .control-btn {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 10px 18px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 13px;
+            font-family: 'Padauk', sans-serif;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .control-btn:hover { 
+            background: var(--accent); 
+            color: white;
+            border-color: var(--accent);
+        }
+        .control-btn.active {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+        
+        /* Grid View */
         .grid { 
             display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); 
-            gap: 25px; 
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+            gap: 20px; 
+        }
+        
+        /* List View */
+        .list-view .grid {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .list-view .tank-card {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: 20px;
+            padding: 20px;
+            align-items: center;
+        }
+        
+        .list-view .cylinder-container {
+            width: 80px;
+            height: 120px;
+        }
+        
+        .list-view .tank-info {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .list-view .stats-grid {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .list-view .stat-box {
+            padding: 10px 15px;
+            min-width: 80px;
         }
         
         /* Tank Card */
         .tank-card { 
-            background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
-            border-radius: 24px; 
-            padding: 25px;
-            border: 1px solid #334155;
+            background: var(--bg-card);
+            border-radius: 20px; 
+            padding: 20px;
+            border: 1px solid var(--border-color);
             position: relative;
             overflow: hidden;
             transition: transform 0.3s, box-shadow 0.3s;
         }
         .tank-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            transform: translateY(-3px);
+            box-shadow: 0 15px 35px var(--shadow);
         }
         
-        .tank-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .tank-header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 15px; 
+        }
         .tank-number { 
-            background: #334155; 
-            padding: 6px 14px; 
+            background: var(--bg-primary); 
+            padding: 5px 12px; 
             border-radius: 8px; 
-            font-size: 12px; 
-            color: #94a3b8;
+            font-size: 11px; 
+            color: var(--text-secondary);
             font-weight: bold;
+            border: 1px solid var(--border-color);
         }
         .fuel-type { 
-            font-size: 20px; 
+            font-size: 14px; 
             font-weight: bold;
-            padding: 6px 16px;
-            border-radius: 10px;
+            padding: 5px 12px;
+            border-radius: 8px;
+            color: white;
         }
         .fuel-type.hsd { background: linear-gradient(135deg, #f59e0b, #d97706); }
         .fuel-type.premium { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
         .fuel-type.ron92 { background: linear-gradient(135deg, #10b981, #059669); }
         .fuel-type.ron95 { background: linear-gradient(135deg, #ef4444, #dc2626); }
         
-        /* Tank Visual */
-        .tank-visual {
-            position: relative;
+        /* 3D Cylinder Tank */
+        .cylinder-container {
+            width: 100%;
             height: 180px;
-            background: #0f172a;
-            border-radius: 16px;
-            border: 2px solid #334155;
-            overflow: hidden;
-            margin-bottom: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 15px 0;
+            perspective: 500px;
         }
         
-        .tank-fill {
+        .cylinder {
+            width: 120px;
+            height: 160px;
+            position: relative;
+            transform-style: preserve-3d;
+        }
+        
+        .cylinder-body {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: var(--cylinder-bg);
+            border: 2px solid var(--cylinder-border);
+            border-radius: 60px / 20px;
+            overflow: hidden;
+            box-shadow: 
+                inset -20px 0 30px rgba(0,0,0,0.3),
+                inset 20px 0 30px rgba(255,255,255,0.05),
+                0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .cylinder-fill {
             position: absolute;
             bottom: 0;
             left: 0;
             right: 0;
             transition: height 1s ease-out;
+            border-radius: 0 0 58px / 18px;
             display: flex;
             align-items: center;
             justify-content: center;
         }
         
-        .tank-fill.level-critical { background: linear-gradient(0deg, #ef4444 0%, #f87171 100%); }
-        .tank-fill.level-low { background: linear-gradient(0deg, #f59e0b 0%, #fbbf24 100%); }
-        .tank-fill.level-medium { background: linear-gradient(0deg, #3b82f6 0%, #60a5fa 100%); }
-        .tank-fill.level-high { background: linear-gradient(0deg, #10b981 0%, #34d399 100%); }
-        
-        .tank-percent {
-            font-size: 36px;
-            font-weight: bold;
-            color: white;
-            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        .cylinder-fill.level-critical { 
+            background: linear-gradient(0deg, #dc2626 0%, #ef4444 50%, #f87171 100%);
+            box-shadow: 0 0 20px rgba(239,68,68,0.5), inset 0 -10px 20px rgba(0,0,0,0.2);
+        }
+        .cylinder-fill.level-low { 
+            background: linear-gradient(0deg, #d97706 0%, #f59e0b 50%, #fbbf24 100%);
+            box-shadow: 0 0 20px rgba(245,158,11,0.5), inset 0 -10px 20px rgba(0,0,0,0.2);
+        }
+        .cylinder-fill.level-medium { 
+            background: linear-gradient(0deg, #2563eb 0%, #3b82f6 50%, #60a5fa 100%);
+            box-shadow: 0 0 20px rgba(59,130,246,0.5), inset 0 -10px 20px rgba(0,0,0,0.2);
+        }
+        .cylinder-fill.level-high { 
+            background: linear-gradient(0deg, #059669 0%, #10b981 50%, #34d399 100%);
+            box-shadow: 0 0 20px rgba(16,185,129,0.5), inset 0 -10px 20px rgba(0,0,0,0.2);
         }
         
-        .tank-markers {
+        .cylinder-percent {
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+            position: relative;
+            z-index: 5;
+        }
+        
+        .cylinder-top {
             position: absolute;
-            right: 10px;
-            top: 0;
-            bottom: 0;
+            top: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 16px;
+            background: linear-gradient(180deg, #475569 0%, #334155 100%);
+            border-radius: 50%;
+            border: 2px solid #64748b;
+            z-index: 10;
+        }
+        
+        .cylinder-bottom {
+            position: absolute;
+            bottom: -3px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 116px;
+            height: 12px;
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+            border-radius: 50%;
+            z-index: -1;
+        }
+        
+        .cylinder-markers {
+            position: absolute;
+            right: -35px;
+            top: 5px;
+            bottom: 5px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            padding: 10px 0;
-            font-size: 10px;
-            color: #64748b;
+            font-size: 9px;
+            color: var(--text-muted);
+        }
+        
+        .cylinder-shine {
+            position: absolute;
+            top: 10px;
+            left: 15px;
+            width: 20px;
+            height: 80%;
+            background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 100%);
+            border-radius: 10px;
         }
         
         /* Stats Grid */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
+            gap: 8px;
+            margin-top: 10px;
         }
         
         .stat-box {
-            background: #0f172a;
-            padding: 15px 10px;
-            border-radius: 12px;
+            background: var(--bg-primary);
+            padding: 12px 8px;
+            border-radius: 10px;
             text-align: center;
-            border: 1px solid #334155;
+            border: 1px solid var(--border-color);
         }
         
-        .stat-label { font-size: 11px; color: #64748b; margin-bottom: 6px; }
-        .stat-value { font-size: 18px; font-weight: bold; color: #f97316; }
-        .stat-value.secondary { color: #94a3b8; }
+        .stat-label { font-size: 10px; color: var(--text-muted); margin-bottom: 4px; }
+        .stat-value { font-size: 16px; font-weight: bold; color: var(--accent); }
+        .stat-value.secondary { color: var(--text-secondary); }
         
         /* Status Indicator */
-        .status-indicator {
+        .status-dot {
             position: absolute;
-            top: 15px;
-            right: 15px;
-            width: 12px;
-            height: 12px;
+            top: 12px;
+            right: 12px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
+            background: #22c55e;
             animation: blink 1.5s infinite;
         }
-        .status-indicator.online { background: #22c55e; }
         @keyframes blink {
             0%, 100% { opacity: 1; }
-            50% { opacity: 0.4; }
+            50% { opacity: 0.3; }
         }
         
         /* Admin Link */
@@ -184,22 +373,42 @@
             position: fixed;
             bottom: 20px;
             right: 20px;
-            background: #334155;
-            color: #94a3b8;
-            padding: 12px 20px;
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            padding: 12px 18px;
             border-radius: 12px;
             text-decoration: none;
-            font-size: 14px;
-            transition: background 0.3s;
+            font-size: 13px;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s;
+            z-index: 100;
         }
-        .admin-link:hover { background: #475569; color: white; }
+        .admin-link:hover { 
+            background: var(--accent); 
+            color: white;
+            border-color: var(--accent);
+        }
 
         /* Responsive */
         @media (max-width: 768px) {
-            .header { flex-direction: column; text-align: center; gap: 15px; }
+            .header { flex-direction: column; text-align: center; }
             .header-left { flex-direction: column; }
             .header-right { text-align: center; }
             .grid { grid-template-columns: 1fr; }
+            .controls { justify-content: center; }
+            
+            .list-view .tank-card {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+            .list-view .cylinder-container {
+                width: 100%;
+                height: 150px;
+            }
+            .list-view .stats-grid {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
         }
     </style>
 </head>
@@ -222,26 +431,88 @@
             </div>
         </div>
 
+        <div class="controls">
+            <button class="control-btn active" id="cardViewBtn" onclick="setView('card')">
+                <span>▦</span> Card View
+            </button>
+            <button class="control-btn" id="listViewBtn" onclick="setView('list')">
+                <span>☰</span> List View
+            </button>
+            <button class="control-btn" id="themeBtn" onclick="toggleTheme()">
+                <span id="themeIcon">☀️</span> <span id="themeText">Light Mode</span>
+            </button>
+        </div>
+
         <div class="grid" id="tankGrid">
             <!-- Tanks render here -->
         </div>
     </div>
 
-    <a href="/admin.html" class="admin-link">⚙️ Admin Panel</a>
+    <a href="/admin.html" class="admin-link">⚙️ Admin</a>
 
     <script>
         const socket = io();
+        let currentView = 'card';
+        let currentTheme = localStorage.getItem('theme') || 'dark';
+        
+        // Apply saved theme
+        if (currentTheme === 'light') {
+            document.documentElement.setAttribute('data-theme', 'light');
+            updateThemeButton();
+        }
         
         // Live Clock
         function updateClock() {
             const now = new Date();
-            const options = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
-            document.getElementById('liveClock').innerText = now.toLocaleTimeString('en-US', options);
+            document.getElementById('liveClock').innerText = now.toLocaleTimeString('en-US', {
+                hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+            });
         }
         setInterval(updateClock, 1000);
         updateClock();
 
-        // Get fuel type class
+        // View Toggle
+        function setView(view) {
+            currentView = view;
+            const container = document.querySelector('.container');
+            
+            if (view === 'list') {
+                container.classList.add('list-view');
+                document.getElementById('listViewBtn').classList.add('active');
+                document.getElementById('cardViewBtn').classList.remove('active');
+            } else {
+                container.classList.remove('list-view');
+                document.getElementById('cardViewBtn').classList.add('active');
+                document.getElementById('listViewBtn').classList.remove('active');
+            }
+        }
+
+        // Theme Toggle
+        function toggleTheme() {
+            currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            localStorage.setItem('theme', currentTheme);
+            
+            if (currentTheme === 'light') {
+                document.documentElement.setAttribute('data-theme', 'light');
+            } else {
+                document.documentElement.removeAttribute('data-theme');
+            }
+            updateThemeButton();
+        }
+        
+        function updateThemeButton() {
+            const icon = document.getElementById('themeIcon');
+            const text = document.getElementById('themeText');
+            if (currentTheme === 'light') {
+                icon.innerText = '🌙';
+                text.innerText = 'Dark Mode';
+            } else {
+                icon.innerText = '☀️';
+                text.innerText = 'Light Mode';
+            }
+        }
+
+        // Fuel class
         function getFuelClass(fuelType) {
             const ft = fuelType.toLowerCase();
             if (ft.includes('premium')) return 'premium';
@@ -251,7 +522,7 @@
             return 'ron92';
         }
 
-        // Get level class based on percentage
+        // Level class
         function getLevelClass(percent) {
             if (percent <= 20) return 'level-critical';
             if (percent <= 40) return 'level-low';
@@ -261,7 +532,6 @@
 
         // Render tanks
         function renderTanks(data) {
-            // Update header
             document.getElementById('stName').innerText = data.station.name || 'Htoo Fuel Station';
             document.getElementById('stBranch').innerText = 'ဆိုင်ခွဲ - ' + (data.station.branchName || '');
             document.getElementById('stPhone').innerText = '📞 ' + (data.station.phoneNumber || '');
@@ -279,50 +549,100 @@
                 const fuelClass = getFuelClass(tank.fuelType);
                 const levelClass = getLevelClass(percent);
 
-                grid.innerHTML += `
-                    <div class="tank-card">
-                        <div class="status-indicator online"></div>
-                        
-                        <div class="tank-header">
-                            <span class="tank-number">TANK ${tank.tankNumber}</span>
-                            <span class="fuel-type ${fuelClass}">${tank.fuelType}</span>
+                if (currentView === 'list') {
+                    grid.innerHTML += `
+                        <div class="tank-card">
+                            <div class="status-dot"></div>
+                            
+                            <div class="cylinder-container">
+                                <div class="cylinder">
+                                    <div class="cylinder-top"></div>
+                                    <div class="cylinder-body">
+                                        <div class="cylinder-shine"></div>
+                                        <div class="cylinder-fill ${levelClass}" style="height: ${percent}%">
+                                            <span class="cylinder-percent">${percent}%</span>
+                                        </div>
+                                    </div>
+                                    <div class="cylinder-bottom"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="tank-info">
+                                <div class="tank-header">
+                                    <span class="tank-number">TANK ${tank.tankNumber}</span>
+                                    <span class="fuel-type ${fuelClass}">${tank.fuelType}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="stats-grid">
+                                <div class="stat-box">
+                                    <div class="stat-label">အမြင့် (CM)</div>
+                                    <div class="stat-value">${tank.currentCM || 'N/A'}</div>
+                                </div>
+                                <div class="stat-box">
+                                    <div class="stat-label">လက်ရှိ (L)</div>
+                                    <div class="stat-value">${Number(currentLiter).toLocaleString()}</div>
+                                </div>
+                                <div class="stat-box">
+                                    <div class="stat-label">အပြည့် (L)</div>
+                                    <div class="stat-value secondary">${Number(maxCapacity).toLocaleString()}</div>
+                                </div>
+                            </div>
                         </div>
+                    `;
+                } else {
+                    grid.innerHTML += `
+                        <div class="tank-card">
+                            <div class="status-dot"></div>
+                            
+                            <div class="tank-header">
+                                <span class="tank-number">TANK ${tank.tankNumber}</span>
+                                <span class="fuel-type ${fuelClass}">${tank.fuelType}</span>
+                            </div>
 
-                        <div class="tank-visual">
-                            <div class="tank-fill ${levelClass}" style="height: ${percent}%">
-                                <span class="tank-percent">${percent}%</span>
+                            <div class="cylinder-container">
+                                <div class="cylinder">
+                                    <div class="cylinder-top"></div>
+                                    <div class="cylinder-body">
+                                        <div class="cylinder-shine"></div>
+                                        <div class="cylinder-fill ${levelClass}" style="height: ${percent}%">
+                                            <span class="cylinder-percent">${percent}%</span>
+                                        </div>
+                                    </div>
+                                    <div class="cylinder-bottom"></div>
+                                    <div class="cylinder-markers">
+                                        <span>100%</span>
+                                        <span>75%</span>
+                                        <span>50%</span>
+                                        <span>25%</span>
+                                        <span>0%</span>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="tank-markers">
-                                <span>100%</span>
-                                <span>75%</span>
-                                <span>50%</span>
-                                <span>25%</span>
-                                <span>0%</span>
-                            </div>
-                        </div>
 
-                        <div class="stats-grid">
-                            <div class="stat-box">
-                                <div class="stat-label">အမြင့် (CM)</div>
-                                <div class="stat-value">${tank.currentCM || 'N/A'}</div>
-                            </div>
-                            <div class="stat-box">
-                                <div class="stat-label">လက်ရှိ (L)</div>
-                                <div class="stat-value">${Number(currentLiter).toLocaleString()}</div>
-                            </div>
-                            <div class="stat-box">
-                                <div class="stat-label">အပြည့်ဆံ့ (L)</div>
-                                <div class="stat-value secondary">${Number(maxCapacity).toLocaleString()}</div>
+                            <div class="stats-grid">
+                                <div class="stat-box">
+                                    <div class="stat-label">အမြင့် (CM)</div>
+                                    <div class="stat-value">${tank.currentCM || 'N/A'}</div>
+                                </div>
+                                <div class="stat-box">
+                                    <div class="stat-label">လက်ရှိ (L)</div>
+                                    <div class="stat-value">${Number(currentLiter).toLocaleString()}</div>
+                                </div>
+                                <div class="stat-box">
+                                    <div class="stat-label">အပြည့် (L)</div>
+                                    <div class="stat-value secondary">${Number(maxCapacity).toLocaleString()}</div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                `;
+                    `;
+                }
             });
         }
 
-        // Socket.IO real-time updates
+        // Socket.IO
         socket.on('dataUpdate', (data) => {
-            console.log('Real-time update received');
+            console.log('Real-time update');
             renderTanks(data);
         });
 
