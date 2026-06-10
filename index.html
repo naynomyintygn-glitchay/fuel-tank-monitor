@@ -14,7 +14,7 @@
             margin: 0;
             padding: 0;
             font-family: 'Padauk', sans-serif;
-            background-color: #0f172a; /* Premium Dark Mode */
+            background-color: #0f172a; /* ညဘက်ကြည့်ရသက်သာမည့် Dark Slate */
             color: #f1f5f9;
         }
         body { padding: 15px; }
@@ -32,7 +32,7 @@
             border-left: 8px solid #f97316;
             box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
         }
-        .header-logo { width: 70px; height: 70px; border-radius: 12px; object-cover: cover; }
+        .header-logo { width: 70px; height: 70px; border-radius: 12px; object-fit: cover; }
         .header-title { margin: 0; font-size: 22px; font-weight: bold; color: #ffffff; }
         .header-sub { margin: 3px 0 0 0; font-size: 15px; color: #94a3b8; }
         .header-phone { margin: 3px 0 0 0; font-size: 13px; color: #64748b; }
@@ -60,7 +60,7 @@
 
         /* 🎴 GRID VIEW LAYOUT */
         .grid-layout { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; width: 100%; }
-        .grid-card { background-color: #1e293b; border-radius: 16px; overflow: hidden; border: 1px solid #334155; display: flex; flex-col: column; justify-content: space-between; }
+        .grid-card { background-color: #1e293b; border-radius: 16px; overflow: hidden; border: 1px solid #334155; display: flex; flex-direction: column; justify-content: space-between; }
         .card-head { background-color: #0f172a; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; }
         .card-body { padding: 16px; }
        
@@ -162,7 +162,7 @@
             if (globalData) renderUI(globalData);
         }
 
-        // UI ကို Dark Mode အစစ်ဖြင့် တည်ဆောက်ပြသပေးသည့် ပင်မ Function
+        // UI ကို တည်ဆောက်ပြသပေးသည့် ပင်မ Function (Bug ပြင်ဆင်ပြီး)
         function renderUI(data) {
             globalData = data;
             document.getElementById('loadingText').style.display = 'none';
@@ -180,74 +180,76 @@
             gridContainer.innerHTML = '';
             listContainer.innerHTML = '';
 
-            data.tanks.forEach(tank => {
-                const percentage = Math.min(Math.round((tank.currentLiter / tank.maxCapacity) * 100), 100) || 0;
-               
-                // ဆီအမျိုးအစားအရောင် Class သတ်မှတ်ခြင်း
-                let fuelClass = "f-default";
-                if (tank.fuelType.toLowerCase().includes("92")) fuelClass = "f-92";
-                if (tank.fuelType.toLowerCase().includes("95")) fuelClass = "f-95";
-                if (tank.fuelType.toLowerCase().includes("diesel") || tank.fuelType.toLowerCase().includes("hsd")) fuelClass = "f-diesel";
+            if (data.tanks && data.tanks.length > 0) {
+                data.tanks.forEach(tank => {
+                    const percentage = Math.min(Math.round((tank.currentLiter / tank.maxCapacity) * 100), 100) || 0;
+                   
+                    // ဆီအမျိုးအစားအရောင် Class သတ်မှတ်ခြင်း
+                    let fuelClass = "f-default";
+                    if (tank.fuelType && tank.fuelType.toLowerCase().includes("92")) fuelClass = "f-92";
+                    if (tank.fuelType && tank.fuelType.toLowerCase().includes("95")) fuelClass = "f-95";
+                    if (tank.fuelType && (tank.fuelType.toLowerCase().includes("diesel") || tank.fuelType.toLowerCase().includes("hsd"))) fuelClass = "f-diesel";
 
-                // --------------------------------------------------
-                // 🎴 (A) GRID VIEW DESIGN
-                // --------------------------------------------------
-                const gridCard = document.createElement('div');
-                gridCard.className = "grid-card";
-                gridCard.innerHTML = `
-                    <div class="card-head">
-                        <span class="badge-tank">Tank ${tank.tankNumber}</span>
-                        <span class="badge-fuel ${fuelClass}">${tank.fuelType}</span>
-                    </div>
-                    <div class="card-body">
-                        <div style="display: flex; justify-content: space-between; font-size: 11px; color: #94a3b8; margin-bottom: 4px;">
-                            <span>ဆီပမာဏ (${percentage}%)</span>
-                            <span>Max: ${tank.maxCapacity.toLocaleString()} L</span>
+                    // --------------------------------------------------
+                    // 🎴 (A) GRID VIEW DESIGN
+                    // --------------------------------------------------
+                    const gridCard = document.createElement('div');
+                    gridCard.className = "grid-card";
+                    gridCard.innerHTML = `
+                        <div class="card-head">
+                            <span class="badge-tank">Tank ${tank.tankNumber}</span>
+                            <span class="badge-fuel ${fuelClass}">${tank.fuelType}</span>
                         </div>
-                        <div class="progress-container">
-                            <div class="progress-bar ${fuelClass}" style="width: ${percentage}%"></div>
-                        </div>
-                        <div class="data-grid">
-                            <div class="v-box v-box-blue">
-                                <span class="v-label">📏 လက်ရှိ CM</span>
-                                <span class="v-num">${tank.currentCM}</span>
+                        <div class="card-body">
+                            <div style="display: flex; justify-content: space-between; font-size: 11px; color: #94a3b8; margin-bottom: 4px;">
+                                <span>ဆီပမာဏ (${percentage}%)</span>
+                                <span>Max: ${tank.maxCapacity ? tank.maxCapacity.toLocaleString() : 0} L</span>
                             </div>
-                            <div class="v-box v-box-green">
-                                <span class="v-label">🛢️ လက်ရှိ လီတာ</span>
-                                <span class="v-num">${tank.currentLiter.toLocaleString()}</span>
+                            <div class="progress-container">
+                                <div class="progress-bar ${fuelClass}" style="width: ${percentage}%"></div>
+                            </div>
+                            <div class="data-grid">
+                                <div class="v-box v-box-blue">
+                                    <span class="v-label">📏 လက်ရှိ CM</span>
+                                    <span class="v-num">${tank.currentCM}</span>
+                                </div>
+                                <div class="v-box v-box-green">
+                                    <span class="v-label">🛢️ လက်ရှိ လီတာ</span>
+                                    <span class="v-num">${tank.currentLiter ? tank.currentLiter.toLocaleString() : 0}</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                `;
-                gridContainer.appendChild(gridCard);
+                    `;
+                    gridContainer.appendChild(gridCard);
 
-                // --------------------------------------------------
-                // 📄 (B) LIST VIEW DESIGN
-                // --------------------------------------------------
-                const listRow = document.createElement('div');
-                listRow.className = "list-row";
-                listRow.innerHTML = `
-                    <div class="list-left">
-                        <span class="badge-tank">Tank ${tank.tankNumber}</span>
-                        <span class="badge-fuel ${fuelClass}">${tank.fuelType}</span>
-                        <span style="font-size: 13px; font-weight: bold; color: #94a3b8;" class="sm-show-only">${percentage}%</span>
-                    </div>
-                    <div class="list-center">
-                        <div class="progress-container" style="margin: 0;">
-                            <div class="progress-bar ${fuelClass}" style="width: ${percentage}%"></div>
+                    // --------------------------------------------------
+                    // 📄 (B) LIST VIEW DESIGN
+                    // --------------------------------------------------
+                    const listRow = document.createElement('div');
+                    listRow.className = "list-row";
+                    listRow.innerHTML = `
+                        <div class="list-left">
+                            <span class="badge-tank">Tank ${tank.tankNumber}</span>
+                            <span class="badge-fuel ${fuelClass}">${tank.fuelType}</span>
+                            <span style="font-size: 13px; font-weight: bold; color: #94a3b8;" class="sm-show-only">${percentage}%</span>
                         </div>
-                    </div>
-                    <div class="list-right">
-                        <div class="v-box v-box-blue" style="padding: 5px 12px; min-width: 85px;">
-                            <span>📏 ${tank.currentCM} CM</span>
+                        <div class="list-center">
+                            <div class="progress-container" style="margin: 0;">
+                                <div class="progress-bar ${fuelClass}" style="width: ${percentage}%"></div>
+                            </div>
                         </div>
-                        <div class="v-box v-box-green" style="padding: 5px 12px; min-width: 140px;">
-                            <span>🛢️ ${tank.currentLiter.toLocaleString()} / ${tank.maxCapacity.toLocaleString()} L</span>
+                        <div class="list-right">
+                            <div class="v-box v-box-blue" style="padding: 5px 12px; min-width: 85px;">
+                                <span>📏 ${tank.currentCM} CM</span>
+                            </div>
+                            <div class="v-box v-box-green" style="padding: 5px 12px; min-width: 140px;">
+                                <span>🛢️ ${tank.currentLiter ? tank.currentLiter.toLocaleString() : 0} / ${tank.maxCapacity ? tank.maxCapacity.toLocaleString() : 0} L</span>
+                            </div>
                         </div>
-                    </div>
-                `;
-                listContainer.appendChild(listRow);
-            });
+                    `;
+                    listContainer.appendChild(listRow);
+                });
+            }
 
             // View Control
             if (currentView === 'grid') {
@@ -268,3 +270,4 @@
     </script>
 </body>
 </html>
+
