@@ -7,6 +7,15 @@
     <link href="[fonts.googleapis.com](https://fonts.googleapis.com/css2?family=Padauk:wght@400;700&display=swap)" rel="stylesheet">
     <script src="/socket.io/socket.io.js"></script>
     <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --text-primary: #ffffff;
+            --text-secondary: #94a3b8;
+            --border-color: #334155;
+            --accent: #f97316;
+        }
+        
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body { 
@@ -19,11 +28,11 @@
         
         .container { max-width: 900px; margin: 0 auto; }
         
-        /* Password Modal */
+        /* Modal */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.85);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -38,14 +47,14 @@
             text-align: center;
             border: 1px solid #475569;
             box-shadow: 0 25px 50px rgba(0,0,0,0.5);
-            max-width: 400px;
+            max-width: 380px;
             width: 90%;
         }
-        .modal-box h2 { color: #f97316; margin-bottom: 10px; }
-        .modal-box p { color: #94a3b8; margin-bottom: 25px; font-size: 14px; }
+        .modal-box h2 { color: #f97316; margin-bottom: 10px; font-size: 22px; }
+        .modal-box p { color: #94a3b8; margin-bottom: 25px; font-size: 13px; }
         .modal-box input {
             width: 100%;
-            padding: 15px;
+            padding: 14px;
             border-radius: 12px;
             border: 2px solid #475569;
             background: #0f172a;
@@ -59,100 +68,92 @@
             background: linear-gradient(135deg, #f97316, #ea580c);
             color: white;
             border: none;
-            padding: 15px 40px;
+            padding: 14px 35px;
             border-radius: 12px;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: bold;
             cursor: pointer;
-            transition: transform 0.2s;
         }
-        .modal-box button:hover { transform: scale(1.05); }
-        .error-msg { color: #ef4444; margin-top: 15px; font-size: 14px; }
+        .error-msg { color: #ef4444; margin-top: 15px; font-size: 13px; }
         
         /* Admin Content */
         .admin-content.hidden { display: none; }
         
         .admin-header {
             background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-            padding: 25px;
-            border-radius: 20px;
-            border-left: 6px solid #f97316;
-            margin-bottom: 25px;
+            padding: 20px 25px;
+            border-radius: 16px;
+            border-left: 5px solid #f97316;
+            margin-bottom: 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
         }
-        .admin-header h1 { color: #f97316; font-size: 24px; }
-        .admin-header a { color: #94a3b8; text-decoration: none; }
+        .admin-header h1 { color: #f97316; font-size: 20px; }
+        .admin-header a { color: #94a3b8; text-decoration: none; font-size: 13px; }
         .admin-header a:hover { color: white; }
         
-        /* Section Box */
+        /* Section */
         .section {
             background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
-            border-radius: 20px;
-            padding: 25px;
-            margin-bottom: 25px;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
             border: 1px solid #334155;
         }
         .section-title {
             color: #f97316;
-            font-size: 16px;
-            margin-bottom: 20px;
+            font-size: 14px;
+            margin-bottom: 15px;
             padding-bottom: 10px;
             border-bottom: 1px solid #334155;
-            display: flex;
-            align-items: center;
-            gap: 10px;
         }
         
-        /* Form Elements */
-        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; margin-bottom: 8px; font-size: 13px; color: #94a3b8; }
+        /* Form */
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; margin-bottom: 6px; font-size: 12px; color: #94a3b8; }
         .form-control {
             width: 100%;
-            padding: 12px 15px;
-            border-radius: 10px;
+            padding: 10px 12px;
+            border-radius: 8px;
             border: 1px solid #475569;
             background: #0f172a;
             color: white;
-            font-size: 14px;
-            transition: border-color 0.3s;
+            font-size: 13px;
         }
         .form-control:focus { outline: none; border-color: #f97316; }
         
         /* Tank Table */
-        .tank-table { width: 100%; border-collapse: collapse; }
+        .tank-table { width: 100%; border-collapse: collapse; font-size: 13px; }
         .tank-table th {
             text-align: left;
-            padding: 12px;
+            padding: 10px;
             background: #0f172a;
             color: #94a3b8;
-            font-size: 12px;
-            border-bottom: 1px solid #334155;
+            font-size: 11px;
         }
-        .tank-table td {
-            padding: 10px 12px;
-            border-bottom: 1px solid #1e293b;
-        }
+        .tank-table td { padding: 8px 10px; border-bottom: 1px solid #1e293b; }
         .tank-table input {
             width: 100%;
-            padding: 10px;
-            border-radius: 8px;
+            padding: 8px;
+            border-radius: 6px;
             border: 1px solid #475569;
             background: #1e293b;
             color: white;
-            font-size: 13px;
+            font-size: 12px;
         }
         .tank-table input:focus { outline: none; border-color: #f97316; }
         .tank-table input[readonly] { background: #0f172a; color: #64748b; }
         
         /* Buttons */
         .btn {
-            padding: 14px 28px;
-            border-radius: 12px;
+            padding: 12px 24px;
+            border-radius: 10px;
             border: none;
-            font-size: 15px;
+            font-size: 14px;
             font-weight: bold;
             cursor: pointer;
             transition: all 0.3s;
@@ -161,56 +162,50 @@
             background: linear-gradient(135deg, #f97316, #ea580c);
             color: white;
         }
-        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(249,115,22,0.3); }
-        .btn-secondary {
-            background: #334155;
-            color: #94a3b8;
-        }
-        .btn-secondary:hover { background: #475569; color: white; }
+        .btn-primary:hover { transform: translateY(-2px); }
         
-        .btn-row { display: flex; gap: 15px; margin-top: 20px; flex-wrap: wrap; }
+        .btn-row { display: flex; gap: 12px; margin-top: 15px; flex-wrap: wrap; }
         
-        /* Upload Box */
+        /* Upload */
         .upload-box {
             border: 2px dashed #475569;
-            padding: 30px;
-            border-radius: 16px;
+            padding: 25px;
+            border-radius: 12px;
             text-align: center;
             cursor: pointer;
-            transition: all 0.3s;
             background: #0f172a;
+            transition: all 0.3s;
         }
-        .upload-box:hover { border-color: #f97316; background: #1e293b; }
+        .upload-box:hover { border-color: #f97316; }
         .upload-box input { display: none; }
-        .upload-box p { color: #94a3b8; margin: 0; }
-        .upload-box .icon { font-size: 40px; margin-bottom: 10px; }
+        .upload-box p { color: #94a3b8; margin: 0; font-size: 13px; }
+        .upload-box .icon { font-size: 32px; margin-bottom: 8px; }
         
-        /* Status Message */
+        /* Status */
         .status-msg {
-            padding: 15px 20px;
-            border-radius: 12px;
-            margin-top: 20px;
-            font-weight: bold;
+            padding: 12px 18px;
+            border-radius: 10px;
+            margin-top: 15px;
+            font-size: 13px;
             text-align: center;
         }
-        .status-msg.success { background: rgba(34,197,94,0.2); color: #22c55e; border: 1px solid #22c55e; }
-        .status-msg.error { background: rgba(239,68,68,0.2); color: #ef4444; border: 1px solid #ef4444; }
+        .status-msg.success { background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid #22c55e; }
+        .status-msg.error { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid #ef4444; }
+        .status-msg.info { background: rgba(59,130,246,0.15); color: #3b82f6; border: 1px solid #3b82f6; }
         .status-msg.hidden { display: none; }
         
-        /* Excel Tank Select */
-        .excel-row { display: flex; gap: 15px; align-items: center; margin-bottom: 20px; }
+        .excel-row { display: flex; gap: 12px; align-items: center; margin-bottom: 15px; flex-wrap: wrap; }
         .excel-row select {
-            padding: 12px 15px;
-            border-radius: 10px;
+            padding: 10px 12px;
+            border-radius: 8px;
             border: 1px solid #475569;
             background: #0f172a;
             color: white;
-            font-size: 14px;
+            font-size: 13px;
         }
 
-        @media (max-width: 768px) {
+        @media (max-width: 600px) {
             .tank-table { display: block; overflow-x: auto; }
-            .form-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -220,7 +215,7 @@
     <div class="modal-overlay" id="passwordModal">
         <div class="modal-box">
             <h2>🔐 Admin Login</h2>
-            <p>Admin Panel သို့ဝင်ရောက်ရန် Password ရိုက်ထည့်ပါ</p>
+            <p>Password ရိုက်ထည့်ပါ</p>
             <input type="password" id="passwordInput" placeholder="Password" onkeypress="if(event.key==='Enter')verifyPassword()">
             <button onclick="verifyPassword()">ဝင်ရောက်မည်</button>
             <div class="error-msg" id="passwordError"></div>
@@ -230,67 +225,64 @@
     <!-- Admin Content -->
     <div class="container admin-content hidden" id="adminContent">
         <div class="admin-header">
-            <h1>🛠️ Admin Control Panel</h1>
+            <h1>🛠️ Admin Panel</h1>
             <a href="/index.html">← Monitor သို့ ပြန်သွားမည်</a>
         </div>
 
         <!-- Station Settings -->
         <div class="section">
-            <div class="section-title">🏢 ဆိုင်အချက်အလက် ပြင်ဆင်ရန်</div>
+            <div class="section-title">🏢 ဆိုင်အချက်အလက်</div>
             <div class="form-grid">
                 <div class="form-group">
                     <label>ဆိုင်နာမည်</label>
-                    <input type="text" id="inputStationName" class="form-control" placeholder="Htoo Fuel Station">
+                    <input type="text" id="inputStationName" class="form-control">
                 </div>
                 <div class="form-group">
                     <label>ဆိုင်ခွဲ</label>
-                    <input type="text" id="inputBranchName" class="form-control" placeholder="ပြင်ဦးလွင်">
+                    <input type="text" id="inputBranchName" class="form-control">
                 </div>
                 <div class="form-group">
                     <label>ဖုန်းနံပါတ်</label>
-                    <input type="text" id="inputPhone" class="form-control" placeholder="09-123456789">
+                    <input type="text" id="inputPhone" class="form-control">
                 </div>
                 <div class="form-group">
                     <label>Logo URL</label>
-                    <input type="text" id="inputLogoUrl" class="form-control" placeholder="https://...">
+                    <input type="text" id="inputLogoUrl" class="form-control">
                 </div>
             </div>
         </div>
 
-        <!-- Tank Manual Edit -->
+        <!-- Tank Edit -->
         <div class="section">
-            <div class="section-title">🛢️ တိုင်ကီများ Manual ပြင်ဆင်ရန်</div>
+            <div class="section-title">🛢️ တိုင်ကီများ ပြင်ဆင်ရန်</div>
             <div style="overflow-x: auto;">
                 <table class="tank-table">
                     <thead>
                         <tr>
-                            <th style="width:60px">Tank</th>
-                            <th style="width:140px">ဆီအမျိုးအစား</th>
-                            <th style="width:100px">CM</th>
-                            <th style="width:120px">Liter</th>
-                            <th style="width:120px">Max Capacity</th>
+                            <th style="width:50px">Tank</th>
+                            <th style="width:120px">ဆီအမျိုးအစား</th>
+                            <th style="width:80px">CM</th>
+                            <th style="width:100px">Liter</th>
+                            <th style="width:100px">Max</th>
                         </tr>
                     </thead>
-                    <tbody id="tankTableBody">
-                        <!-- Rows rendered by JS -->
-                    </tbody>
+                    <tbody id="tankTableBody"></tbody>
                 </table>
             </div>
         </div>
 
-        <!-- Save Button -->
         <div class="btn-row">
-            <button class="btn btn-primary" onclick="saveAllData()">💾 အားလုံး သိမ်းဆည်းမည်</button>
+            <button class="btn btn-primary" onclick="saveAllData()">💾 သိမ်းဆည်းမည်</button>
         </div>
 
         <!-- Excel Upload -->
-        <div class="section" style="margin-top: 25px;">
-            <div class="section-title">📊 Excel ဖိုင်မှ Auto Update</div>
+        <div class="section" style="margin-top: 20px;">
+            <div class="section-title">📊 Excel Auto Import</div>
             
             <div class="excel-row">
-                <label style="color:#94a3b8">ဘယ် Tank အတွက်လဲ:</label>
+                <label style="color:#94a3b8; font-size: 12px;">Tank:</label>
                 <select id="excelTankSelect">
-                    <option value="all">အားလုံး (Sheet တစ်ခုစီ = Tank တစ်ခု)</option>
+                    <option value="all">အားလုံး (Auto Detect)</option>
                     <option value="1">Tank 1</option>
                     <option value="2">Tank 2</option>
                     <option value="3">Tank 3</option>
@@ -302,12 +294,12 @@
             
             <div class="upload-box" onclick="document.getElementById('excelFile').click()">
                 <div class="icon">📁</div>
-                <p>Excel (.xlsx) ဖိုင်ရွေးချယ်ရန် နှိပ်ပါ</p>
+                <p>Excel (.xlsx) ဖိုင် ရွေးပါ</p>
+                <p style="font-size:11px; color:#64748b; margin-top:5px;">Auto-correct: မှားနေသော data များကို အလိုအလျောက် ပြင်ပေးမည်</p>
                 <input type="file" id="excelFile" accept=".xlsx,.xls" onchange="uploadExcel()">
             </div>
         </div>
 
-        <!-- Status Message -->
         <div class="status-msg hidden" id="statusMsg"></div>
     </div>
 
@@ -315,10 +307,8 @@
         const socket = io();
         let adminPassword = '';
 
-        // Password Verification
         function verifyPassword() {
             const password = document.getElementById('passwordInput').value;
-            
             fetch('/api/verify-password', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -337,18 +327,15 @@
             });
         }
 
-        // Load Current Data
         function loadCurrentData() {
             fetch('/api/data')
                 .then(res => res.json())
                 .then(data => {
-                    // Station info
                     document.getElementById('inputStationName').value = data.station.name || '';
                     document.getElementById('inputBranchName').value = data.station.branchName || '';
                     document.getElementById('inputPhone').value = data.station.phoneNumber || '';
                     document.getElementById('inputLogoUrl').value = data.station.logoUrl || '';
 
-                    // Tank table
                     const tbody = document.getElementById('tankTableBody');
                     tbody.innerHTML = '';
                     
@@ -357,7 +344,6 @@
 
                     for (let i = 1; i <= 6; i++) {
                         const tank = data.tanks ? data.tanks.find(t => t.tankNumber == i) : null;
-                        
                         tbody.innerHTML += `
                             <tr>
                                 <td><input type="text" name="tankNumber" value="${i}" readonly></td>
@@ -371,11 +357,9 @@
                 });
         }
 
-        // Save All Data
         function saveAllData() {
             const rows = document.querySelectorAll('#tankTableBody tr');
             const tanks = [];
-            
             rows.forEach(row => {
                 tanks.push({
                     tankNumber: row.querySelector('[name="tankNumber"]').value,
@@ -396,23 +380,16 @@
             fetch('/api/manual-save', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    station: stationData, 
-                    tanks: tanks,
-                    password: adminPassword 
-                })
+                body: JSON.stringify({ station: stationData, tanks, password: adminPassword })
             })
             .then(res => res.json())
             .then(data => {
-                showStatus(data.success, data.success ? 
-                    '🎉 အချက်အလက်များ သိမ်းဆည်းပြီးပါပြီ!' : 
-                    '❌ ' + (data.message || 'သိမ်းဆည်းမှု မအောင်မြင်ပါ'));
+                showStatus(data.success, data.success ? '🎉 သိမ်းဆည်းပြီးပါပြီ!' : '❌ ' + (data.message || 'Error'));
                 if (data.success) loadCurrentData();
             })
-            .catch(() => showStatus(false, '❌ Error occurred'));
+            .catch(() => showStatus(false, '❌ Error'));
         }
 
-        // Upload Excel
         function uploadExcel() {
             const fileInput = document.getElementById('excelFile');
             if (!fileInput.files[0]) return;
@@ -422,38 +399,40 @@
             formData.append('password', adminPassword);
             formData.append('tankNumber', document.getElementById('excelTankSelect').value);
 
-            showStatus(null, '⏳ Excel ဖိုင် တွက်ချက်နေပါသည်...');
+            showStatus(null, '⏳ Excel ဖိုင် Auto-correct လုပ်ပြီး တွက်ချက်နေပါသည်...');
 
             fetch('/api/excel-upload', { method: 'POST', body: formData })
                 .then(res => res.json())
                 .then(data => {
-                    showStatus(data.success, data.success ? 
-                        '🎉 Excel မှ ဒေတာများ အောင်မြင်စွာ Update ဖြစ်သွားပါပြီ!' : 
-                        '❌ ' + (data.message || 'ဖိုင်ဖတ်ရှုမှု မအောင်မြင်ပါ'));
-                    if (data.success) loadCurrentData();
+                    if (data.success) {
+                        let msg = '🎉 Excel Import အောင်မြင်ပါပြီ!';
+                        if (data.log && data.log.length > 0) {
+                            msg += '\n' + data.log.join('\n');
+                        }
+                        showStatus(true, msg);
+                        loadCurrentData();
+                    } else {
+                        showStatus(false, '❌ ' + (data.message || 'Error'));
+                    }
                     fileInput.value = '';
                 })
                 .catch(() => {
-                    showStatus(false, '❌ Error occurred');
+                    showStatus(false, '❌ Error');
                     fileInput.value = '';
                 });
         }
 
-        // Show Status Message
         function showStatus(success, message) {
             const el = document.getElementById('statusMsg');
-            el.classList.remove('hidden', 'success', 'error');
+            el.classList.remove('hidden', 'success', 'error', 'info');
             if (success === null) {
-                el.style.background = 'rgba(59,130,246,0.2)';
-                el.style.color = '#3b82f6';
-                el.style.border = '1px solid #3b82f6';
+                el.classList.add('info');
             } else {
                 el.classList.add(success ? 'success' : 'error');
             }
             el.innerText = message;
         }
 
-        // Socket.IO updates
         socket.on('dataUpdate', () => {
             if (!document.getElementById('adminContent').classList.contains('hidden')) {
                 loadCurrentData();
