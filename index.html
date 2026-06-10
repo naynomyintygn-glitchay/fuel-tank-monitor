@@ -1,113 +1,108 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Htoo Fuel Station - Tank Monitoring</title>
+    <title>Htoo Fuel Station - Live Monitoring</title>
     <link href="https://fonts.googleapis.com/css2?family=Padauk:wght=400;700&display=swap" rel="stylesheet">
-   
     <style>
-        * { box-sizing: border-box; }
-        html, body {
-            max-width: 100%;
-            overflow-x: hidden;
-            margin: 0;
-            padding: 0;
-            font-family: 'Padauk', sans-serif;
-            background-color: #0f172a; /* မျက်စိအေးစေမည့် Premium Dark Mode BG */
-            color: #f1f5f9;
+        /* CSS Variables for Dynamic Dark/Light Theme Switching */
+        :root[data-theme="dark"] {
+            --bg-main: #0f172a; --bg-card: #1e293b; --bg-inner: #0f172a;
+            --text-main: #f1f5f9; --text-muted: #94a3b8; --border-color: #334155;
+            --header-border: #f97316;
         }
+        :root[data-theme="light"] {
+            --bg-main: #f8f9fa; --bg-card: #ffffff; --bg-inner: #f1f3f5;
+            --text-main: #212529; --text-muted: #6c757d; --border-color: #dee2e6;
+            --header-border: #007bff;
+        }
+
+        * { box-sizing: border-box; transition: background-color 0.3s, color 0.3s; }
+        html, body { max-width: 100%; overflow-x: hidden; margin: 0; padding: 0; font-family: 'Padauk', sans-serif; background-color: var(--bg-main); color: var(--text-main); }
         body { padding: 15px; }
         .max-container { max-width: 1024px; margin: 0 auto; }
        
         /* 🏢 Header Area Styling */
         .header-card {
-            background-color: #1e293b; border-radius: 16px; padding: 20px; margin-bottom: 20px;
-            display: flex; align-items: center; gap: 20px; border-left: 8px solid #f97316;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
+            background-color: var(--bg-card); border-radius: 16px; padding: 20px; margin-bottom: 15px;
+            display: flex; align-items: center; justify-content: space-between; gap: 20px;
+            border-left: 8px solid var(--header-border); box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
+        .header-info { display: flex; align-items: center; gap: 20px; }
         .header-logo { width: 70px; height: 70px; border-radius: 12px; object-fit: cover; }
-        .header-title { margin: 0; font-size: 22px; font-weight: bold; color: #ffffff; }
-        .header-sub { margin: 3px 0 0 0; font-size: 15px; color: #94a3b8; }
-        .header-phone { margin: 3px 0 0 0; font-size: 13px; color: #64748b; }
+        .header-title { margin: 0; font-size: 22px; font-weight: bold; }
+        .header-sub { margin: 3px 0 0 0; font-size: 15px; color: var(--text-muted); }
 
-        /* 🎛️ View Control Toggle Bar */
-        .control-bar {
-            background-color: #1e293b; padding: 12px 20px; border-radius: 12px; margin-bottom: 20px;
-            display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2);
+        /* ⏱️ Last Updated History Bar */
+        .history-bar {
+            background-color: var(--bg-card); padding: 10px 20px; border-radius: 10px; margin-bottom: 15px;
+            display: flex; align-items: center; justify-content: space-between; border: 1px solid var(--border-color);
+            font-size: 13px; font-weight: bold;
         }
-        .control-title { font-size: 16px; font-weight: bold; color: #e2e8f0; display: flex; align-items: center; gap: 8px; margin: 0; }
-        .control-dot { width: 10px; height: 20px; background-color: #f97316; border-radius: 4px; }
-       
-        .switch-box { background-color: #0f172a; padding: 4px; border-radius: 8px; display: flex; border: 1px solid #334155; }
+        .history-time { color: #f97316; }
+
+        /* 🎛️ Control Panel (Theme + Layout View Switch) */
+        .control-bar {
+            background-color: var(--bg-card); padding: 12px 20px; border-radius: 12px; margin-bottom: 20px;
+            display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .switch-box { background-color: var(--bg-inner); padding: 4px; border-radius: 8px; display: flex; border: 1px solid var(--border-color); }
         .switch-btn {
             background: none; border: none; padding: 6px 14px; font-size: 12px; font-weight: bold;
-            color: #94a3b8; cursor: pointer; border-radius: 6px; transition: all 0.2s;
+            color: var(--text-muted); cursor: pointer; border-radius: 6px;
         }
-        .switch-btn.active { background-color: #f97316; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .switch-btn.active { background-color: #f97316; color: white; }
 
-        /* 🎴 GRID VIEW LAYOUT (TANK LOOK) */
+        /* 🎴 GRID CYLINDRICAL TANK VIEW */
         .grid-layout { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; width: 100%; }
-        .grid-card { background-color: #1e293b; border-radius: 16px; overflow: hidden; border: 1px solid #334155; display: flex; flex-direction: column; justify-content: space-between; }
-        .card-head { background-color: #0f172a; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; }
+        .grid-card { background-color: var(--bg-card); border-radius: 16px; overflow: hidden; border: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: space-between; }
+        .card-head { background-color: var(--bg-inner); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); }
         .card-body { padding: 16px; display: flex; flex-direction: column; align-items: center; }
        
-        /* 🛢️ 3D CYLINDRICAL TANK DESIGN (အစ်ကိုကြီးလိုချင်တဲ့ ဆီတိုင်ကီပုံစံစစ်စစ်) */
+        /* 🛢️ 3D Cylindrical Tank UI Component */
         .tank-wrapper {
             width: 120px; height: 160px; background: #090d16; border: 3px solid #475569;
             border-radius: 20px / 12px; position: relative; overflow: hidden; margin: 15px 0;
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.9), 0 4px 10px rgba(0,0,0,0.4);
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
         }
-        /* တိုင်ကီထဲက ဆီလှိုင်းရည် */
-        .tank-fluid {
-            position: absolute; bottom: 0; left: 0; width: 100%; height: 0%;
-            transition: height 0.6s ease-in-out;
-            box-shadow: inset 0 10px 10px rgba(255,255,255,0.2);
-        }
-        /* တိုင်ကီအလယ်က ဆီရာခိုင်နှုန်းစာလုံး */
+        .tank-fluid { position: absolute; bottom: 0; left: 0; width: 100%; height: 0%; transition: height 0.8s ease-in-out; }
         .tank-pct-text {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            font-size: 20px; font-weight: 900; color: #ffffff; text-shadow: 0 2px 5px rgba(0,0,0,1);
-            z-index: 10;
+            font-size: 20px; font-weight: 900; color: #ffffff; text-shadow: 0 2px 5px rgba(0,0,0,1); z-index: 10;
         }
 
         /* 📄 LIST VIEW LAYOUT */
         .list-layout { display: none; width: 100%; }
         .list-row {
-            background-color: #1e293b; padding: 14px; border-radius: 12px; margin-bottom: 12px;
-            border: 1px solid #334155; display: flex; align-items: center; justify-content: space-between; gap: 15px;
+            background-color: var(--bg-card); padding: 14px; border-radius: 12px; margin-bottom: 12px;
+            border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; gap: 15px;
         }
         .list-left { display: flex; align-items: center; gap: 10px; min-width: 150px; }
         .list-center { flex: 1; }
-        .list-right { display: flex; align-items: center; gap: 10px; justify-content: flex-end; }
+        .progress-container { width: 100%; background-color: var(--bg-inner); height: 12px; border-radius: 6px; overflow: hidden; }
+        .progress-bar { height: 100%; border-radius: 6px; transition: width 0.8s ease-in-out; }
+        .list-right { display: flex; align-items: center; gap: 10px; }
 
-        /* 🔋 Badges & Progress Bars */
+        /* Fuel Dynamic Styling */
         .badge-tank { background-color: #475569; color: white; padding: 3px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; }
         .badge-fuel { padding: 3px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; color: white; min-width: 65px; text-align: center; }
-        .progress-container { width: 100%; background-color: #0f172a; height: 12px; border-radius: 6px; overflow: hidden; margin: 10px 0; position: relative; }
-        .progress-bar { height: 100%; border-radius: 6px; transition: width 0.5s ease-in-out; }
-       
-        /* 📊 Data Grid Info Box */
         .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin-top: 5px; }
-        .v-box { padding: 8px; border-radius: 10px; text-align: center; font-size: 13px; }
-        .v-box-blue { background-color: rgba(30, 58, 138, 0.4); border: 1px solid #1e40af; color: #93c5fd; }
-        .v-box-green { background-color: rgba(6, 78, 59, 0.4); border: 1px solid #065f46; color: #6ee7b7; }
-        .v-label { display: block; font-size: 10px; font-weight: bold; opacity: 0.8; margin-bottom: 2px; }
-        .v-num { font-size: 14px; font-weight: bold; }
+        .v-box { padding: 8px; border-radius: 10px; text-align: center; font-size: 13px; border: 1px solid var(--border-color); }
+        .v-box-blue { background-color: rgba(30, 58, 138, 0.15); color: #3b82f6; font-weight: bold; }
+        .v-box-green { background-color: rgba(6, 78, 59, 0.15); color: #10b981; font-weight: bold; }
+        .v-label { display: block; font-size: 10px; opacity: 0.8; margin-bottom: 2px; }
 
-        /* 🎨 Fuel Types Dynamic Colors (92=အစိမ်း၊ 95=အနီ၊ Diesel=အဝါ) */
-        .f-92 { background-color: #059669; }       
-        .f-95 { background-color: #dc2626; }       
-        .f-diesel { background-color: #d97706; }   
-        .f-default { background-color: #475569; }
+        /* Fuel Type Base Colors */
+        .f-92 { background-color: #059669 !important; }       
+        .f-95 { background-color: #dc2626 !important; }       
+        .f-diesel { background-color: #d97706 !important; }   
+        .f-default { background-color: #64748b; }
 
-        /* Mobile Responsive */
         @media (max-width: 640px) {
             .header-card { flex-direction: column; text-align: center; }
             .list-row { flex-direction: column; align-items: stretch; gap: 10px; }
-            .list-left { border-bottom: 1px solid #334155; padding-bottom: 8px; justify-content: space-between; }
             .list-right { justify-content: space-between; }
-            .list-right .v-box { flex: 1; }
         }
     </style>
 </head>
@@ -115,29 +110,33 @@
 
     <div class="max-container">
         <div class="header-card">
-            <img id="stationLogo" src="https://placehold.co/100x100/orange/white?text=HTOO" alt="Logo" class="header-logo">
-            <div>
-                <h1 id="stationName" class="header-title">Htoo Fuel Station</h1>
-                <p id="stationBranch" class="header-sub">ပြင်ဦးလွင်ဘဏ်ခွဲ</p>
-                <p id="stationPhone" class="header-phone">09-123456789</p>
+            <div class="header-info">
+                <img id="stationLogo" src="https://placehold.co/100x100/orange/white?text=HTOO" alt="Logo" class="header-logo">
+                <div>
+                    <h1 id="stationName" class="header-title">Htoo Fuel Station</h1>
+                    <p id="stationBranch" class="header-sub">Live Tank Monitoring System</p>
+                </div>
+            </div>
+            <div class="switch-box">
+                <button onclick="toggleTheme('light')" id="themeLight" class="switch-btn">☀️ Light</button>
+                <button onclick="toggleTheme('dark')" id="themeDark" class="switch-btn active">🌙 Dark</button>
             </div>
         </div>
 
+        <div class="history-bar">
+            <span>📊 စနစ်၏ လက်ရှိအခြေအနေ</span>
+            <span>နောက်ဆုံးပြင်ဆင်မှု - <span id="lastUpdated" class="history-time">မရှိသေးပါ</span></span>
+        </div>
+
         <div class="control-bar">
-            <h2 class="control-title">
-                <span class="control-dot"></span>
-                ဆီတိုင်ကီများ၏ လက်ရှိအခြေအနေ
-            </h2>
+            <span style="font-weight: bold;">ဆီတိုင်ကီများ စာရင်း</span>
             <div class="switch-box">
-                <button id="btnGrid" onclick="switchView('grid')" class="switch-btn active">📱 Grid View</button>
+                <button id="btnGrid" onclick="switchView('grid')" class="switch-btn active">🛢️ Cylinder View</button>
                 <button id="btnList" onclick="switchView('list')" class="switch-btn">📄 List View</button>
             </div>
         </div>
 
-        <div id="loadingText" style="text-align: center; color: #64748b; padding: 20px; font-size: 14px;">အချက်အလက်များ ဆွဲယူနေပါသည်...</div>
-
         <div id="gridViewContainer" class="grid-layout"></div>
-
         <div id="listViewContainer" class="list-layout"></div>
     </div>
 
@@ -145,148 +144,89 @@
     <script>
         const socket = io();
         let currentView = 'grid';
-        let globalData = null;
 
-        // Grid နှင့် List View အကူးအပြောင်းလုပ်ဆောင်ချက်
-        function switchView(view) {
-            currentView = view;
-            const btnGrid = document.getElementById('btnGrid');
-            const btnList = document.getElementById('btnList');
-            const gridBox = document.getElementById('gridViewContainer');
-            const listBox = document.getElementById('listViewContainer');
-
-            if (view === 'grid') {
-                btnGrid.classList.add('active');
-                btnList.classList.remove('active');
-                gridBox.style.display = 'grid';
-                listBox.style.display = 'none';
-            } else {
-                btnGrid.classList.remove('active');
-                btnList.classList.add('active');
-                gridBox.style.display = 'none';
-                listBox.style.display = 'block';
-            }
-            if (globalData) renderUI(globalData);
+        function toggleTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            document.getElementById('themeLight').classList.toggle('active', theme === 'light');
+            document.getElementById('themeDark').classList.toggle('active', theme === 'dark');
         }
 
-        // Backend ကလာသော ဒေတာများကို ပုံဖော်ပြသမည့် ပင်မ Function
-        function renderUI(data) {
-            globalData = data;
-            document.getElementById('loadingText').style.display = 'none';
+        function switchView(view) {
+            currentView = view;
+            document.getElementById('btnGrid').classList.toggle('active', view === 'grid');
+            document.getElementById('btnList').classList.toggle('active', view === 'list');
+            document.getElementById('gridViewContainer').style.display = view === 'grid' ? 'grid' : 'none';
+            document.getElementById('listViewContainer').style.display = view === 'list' ? 'block' : 'none';
+        }
 
-            if (data.station) {
-                document.getElementById('stationName').innerText = data.station.name || "Htoo Fuel Station";
-                document.getElementById('stationBranch').innerText = data.station.branchName || "";
-                document.getElementById('stationPhone').innerText = data.station.phoneNumber || "";
-                if (data.station.logoUrl) document.getElementById('stationLogo').src = data.station.logoUrl;
-            }
+        function renderUI(data) {
+            if(!data) return;
+            if(data.lastUpdated) document.getElementById('lastUpdated').innerText = data.lastUpdated;
 
             const gridContainer = document.getElementById('gridViewContainer');
             const listContainer = document.getElementById('listViewContainer');
-           
-            gridContainer.innerHTML = '';
-            listContainer.innerHTML = '';
+            gridContainer.innerHTML = ''; listContainer.innerHTML = '';
 
             if (data.tanks && data.tanks.length > 0) {
                 data.tanks.forEach(tank => {
-                    // ကိန်းဂဏန်းများတွက်ချက်မှု တိကျသေချာစေရန် စစ်ဆေးခြင်း
-                    const curLit = Number(tank.currentLiter) || 0;
-                    const maxCap = Number(tank.maxCapacity) || 1;
-                    const percentage = Math.min(Math.round((curLit / maxCap) * 100), 100);
-                    const displayCM = tank.currentCM !== undefined && tank.currentCM !== null ? tank.currentCM : "0";
+                    const curLit = parseFloat(String(tank.currentLiter).replace(/,/g, '')) || 0;
+                    const maxCap = parseFloat(String(tank.maxCapacity).replace(/,/g, '')) || 30500;
+                    const percentage = Math.min(Math.round((curLit / maxCap) * 100), 100) || 0;
+                    const displayCM = tank.currentCM || "0";
                    
-                    // 🌟 ဒေတာထဲက ဆီအမျိုးအစားစာလုံးများကို အမှားမရှိအောင် စစ်ဆေးပြီး အရောင်ခွဲခြားခြင်း
                     let fuelClass = "f-default";
                     const rawFuelType = tank.fuelType ? String(tank.fuelType).toUpperCase() : "";
-                   
-                    if (rawFuelType.includes("92")) {
-                        fuelClass = "f-92";
-                    } else if (rawFuelType.includes("95")) {
-                        fuelClass = "f-95";
-                    } else if (rawFuelType.includes("DIESEL") || rawFuelType.includes("HSD") || rawFuelType.includes("PDO")) {
-                        fuelClass = "f-diesel";
-                    }
+                    if (rawFuelType.includes("92")) fuelClass = "f-92";
+                    else if (rawFuelType.includes("95")) fuelClass = "f-95";
+                    else if (rawFuelType.includes("DIESEL") || rawFuelType.includes("HSD") || rawFuelType.includes("PREMIUM")) fuelClass = "f-diesel";
 
-                    // --------------------------------------------------
-                    // 🎴 (A) TANK GRID VIEW LAYOUT (ဆီတိုင်ကီပုံစံစစ်စစ်)
-                    // --------------------------------------------------
+                    // Cylinder Card UI
                     const gridCard = document.createElement('div');
                     gridCard.className = "grid-card";
                     gridCard.innerHTML = `
                         <div class="card-head">
-                            <span class="badge-tank">Tank ${tank.tankNumber || ""}</span>
-                            <span class="badge-fuel ${fuelClass}">${tank.fuelType || "Unknown"}</span>
+                            <span class="badge-tank">Tank ${tank.tankNumber}</span>
+                            <span class="badge-fuel ${fuelClass}">${tank.fuelType}</span>
                         </div>
                         <div class="card-body">
-                            <div style="font-size: 11px; color: #94a3b8; width:100%; display:flex; justify-content:space-between;">
-                                <span>ဆီဝင်ဆံ့မှု (အများဆုံး):</span>
-                                <span>${maxCap.toLocaleString()} L</span>
+                            <div style="font-size:11px; color:var(--text-muted); width:100%; display:flex; justify-content:space-between;">
+                                <span>အပြည့်ဆံ့ပမာဏ:</span><span>${maxCap.toLocaleString()} L</span>
                             </div>
-                           
                             <div class="tank-wrapper">
                                 <div class="tank-pct-text">${percentage}%</div>
                                 <div class="tank-fluid ${fuelClass}" style="height: ${percentage}%"></div>
                             </div>
-
                             <div class="data-grid">
-                                <div class="v-box v-box-blue">
-                                    <span class="v-label">📏 လက်ရှိ CM</span>
-                                    <span class="v-num">${displayCM}</span>
-                                </div>
-                                <div class="v-box v-box-green">
-                                    <span class="v-label">🛢️ လက်ရှိ လီတာ</span>
-                                    <span class="v-num">${curLit.toLocaleString()}</span>
-                                </div>
+                                <div class="v-box v-box-blue"><span class="v-label">📏 လက်ရှိ CM</span><span>${displayCM} cm</span></div>
+                                <div class="v-box v-box-green"><span class="v-label">🛢️ လက်ရှိ Liter</span><span>${curLit.toLocaleString()} L</span></div>
                             </div>
                         </div>
                     `;
                     gridContainer.appendChild(gridCard);
 
-                    // --------------------------------------------------
-                    // 📄 (B) LIST VIEW LAYOUT DESIGN
-                    // --------------------------------------------------
+                    // List Row UI
                     const listRow = document.createElement('div');
                     listRow.className = "list-row";
                     listRow.innerHTML = `
                         <div class="list-left">
-                            <span class="badge-tank">Tank ${tank.tankNumber || ""}</span>
-                            <span class="badge-fuel ${fuelClass}">${tank.fuelType || ""}</span>
-                            <span style="font-size: 13px; font-weight: bold; color: #94a3b8;">${percentage}%</span>
+                            <span class="badge-tank">Tank ${tank.tankNumber}</span>
+                            <span class="badge-fuel ${fuelClass}">${tank.fuelType}</span>
+                            <span style="font-weight:bold;">${percentage}%</span>
                         </div>
                         <div class="list-center">
-                            <div class="progress-container" style="margin: 0;">
-                                <div class="progress-bar ${fuelClass}" style="width: ${percentage}%"></div>
-                            </div>
+                            <div class="progress-container"><div class="progress-bar ${fuelClass}" style="width: ${percentage}%"></div></div>
                         </div>
                         <div class="list-right">
-                            <div class="v-box v-box-blue" style="padding: 5px 12px; min-width: 85px;">
-                                <span>📏 ${displayCM} CM</span>
-                            </div>
-                            <div class="v-box v-box-green" style="padding: 5px 12px; min-width: 140px;">
-                                <span>🛢️ ${curLit.toLocaleString()} / ${maxCap.toLocaleString()} L</span>
-                            </div>
+                            <div class="v-box v-box-blue" style="padding:4px 10px;"><span>${displayCM} CM</span></div>
+                            <div class="v-box v-box-green" style="padding:4px 10px;"><span>${curLit.toLocaleString()} / ${maxCap.toLocaleString()} L</span></div>
                         </div>
                     `;
                     listContainer.appendChild(listRow);
                 });
             }
-
-            // လက်ရှိရွေးချယ်ထားသော View အတိုင်း Layout ပြသခြင်း
-            if (currentView === 'grid') {
-                gridContainer.style.display = 'grid';
-                listContainer.style.display = 'none';
-            } else {
-                gridContainer.style.display = 'none';
-                listContainer.style.display = 'block';
-            }
         }
 
-        // API ဆွဲယူခြင်းနှင့် Realtime Socket လက်ခံခြင်း
-        fetch('/api/data')
-            .then(res => res.json())
-            .then(data => renderUI(data))
-            .catch(err => console.error("Error loading data:", err));
-
+        fetch('/api/data').then(res => res.json()).then(data => renderUI(data)).catch(err => console.error(err));
         socket.on('dataUpdate', (data) => { renderUI(data); });
     </script>
 </body>
