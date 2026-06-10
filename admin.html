@@ -1,56 +1,382 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="my">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Htoo Fuel - Admin</title>
-    <link href="https://fonts.googleapis.com/css2?family=Padauk:wght@400;700&display=swap" rel="stylesheet">
+    <title>Htoo Fuel - Admin Panel</title>
+    <link href="[fonts.googleapis.com](https://fonts.googleapis.com/css2?family=Padauk:wght@400;700&display=swap)" rel="stylesheet">
+    <script src="/socket.io/socket.io.js"></script>
     <style>
-        body { font-family: 'Padauk', sans-serif; background-color: #0f172a; color: #f1f5f9; padding: 20px; }
-        .admin-container { max-width: 800px; margin: 0 auto; background-color: #1e293b; padding: 25px; border-radius: 16px; border: 1px solid #334155; }
-        .section-box { background-color: #0f172a; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
-        .form-control { background-color: #1e293b; border: 1px solid #475569; color: white; padding: 10px; border-radius: 8px; width: 100%; margin-bottom: 10px; }
-        .tank-row { display: grid; grid-template-columns: 70px 140px 100px 120px 120px; gap: 10px; margin-bottom: 12px; }
-        .btn-action { background-color: #f97316; color: white; border: none; padding: 12px 20px; font-weight: bold; border-radius: 8px; cursor: pointer; width: 100%; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body { 
+            font-family: 'Padauk', sans-serif; 
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #f1f5f9; 
+            min-height: 100vh;
+            padding: 20px; 
+        }
+        
+        .container { max-width: 900px; margin: 0 auto; }
+        
+        /* Password Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal-overlay.hidden { display: none; }
+        
+        .modal-box {
+            background: linear-gradient(145deg, #1e293b, #334155);
+            padding: 40px;
+            border-radius: 24px;
+            text-align: center;
+            border: 1px solid #475569;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+            max-width: 400px;
+            width: 90%;
+        }
+        .modal-box h2 { color: #f97316; margin-bottom: 10px; }
+        .modal-box p { color: #94a3b8; margin-bottom: 25px; font-size: 14px; }
+        .modal-box input {
+            width: 100%;
+            padding: 15px;
+            border-radius: 12px;
+            border: 2px solid #475569;
+            background: #0f172a;
+            color: white;
+            font-size: 16px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .modal-box input:focus { outline: none; border-color: #f97316; }
+        .modal-box button {
+            background: linear-gradient(135deg, #f97316, #ea580c);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .modal-box button:hover { transform: scale(1.05); }
+        .error-msg { color: #ef4444; margin-top: 15px; font-size: 14px; }
+        
+        /* Admin Content */
+        .admin-content.hidden { display: none; }
+        
+        .admin-header {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            padding: 25px;
+            border-radius: 20px;
+            border-left: 6px solid #f97316;
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .admin-header h1 { color: #f97316; font-size: 24px; }
+        .admin-header a { color: #94a3b8; text-decoration: none; }
+        .admin-header a:hover { color: white; }
+        
+        /* Section Box */
+        .section {
+            background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 25px;
+            border: 1px solid #334155;
+        }
+        .section-title {
+            color: #f97316;
+            font-size: 16px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #334155;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        /* Form Elements */
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 8px; font-size: 13px; color: #94a3b8; }
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border-radius: 10px;
+            border: 1px solid #475569;
+            background: #0f172a;
+            color: white;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        .form-control:focus { outline: none; border-color: #f97316; }
+        
+        /* Tank Table */
+        .tank-table { width: 100%; border-collapse: collapse; }
+        .tank-table th {
+            text-align: left;
+            padding: 12px;
+            background: #0f172a;
+            color: #94a3b8;
+            font-size: 12px;
+            border-bottom: 1px solid #334155;
+        }
+        .tank-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #1e293b;
+        }
+        .tank-table input {
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #475569;
+            background: #1e293b;
+            color: white;
+            font-size: 13px;
+        }
+        .tank-table input:focus { outline: none; border-color: #f97316; }
+        .tank-table input[readonly] { background: #0f172a; color: #64748b; }
+        
+        /* Buttons */
+        .btn {
+            padding: 14px 28px;
+            border-radius: 12px;
+            border: none;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #f97316, #ea580c);
+            color: white;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(249,115,22,0.3); }
+        .btn-secondary {
+            background: #334155;
+            color: #94a3b8;
+        }
+        .btn-secondary:hover { background: #475569; color: white; }
+        
+        .btn-row { display: flex; gap: 15px; margin-top: 20px; flex-wrap: wrap; }
+        
+        /* Upload Box */
+        .upload-box {
+            border: 2px dashed #475569;
+            padding: 30px;
+            border-radius: 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #0f172a;
+        }
+        .upload-box:hover { border-color: #f97316; background: #1e293b; }
+        .upload-box input { display: none; }
+        .upload-box p { color: #94a3b8; margin: 0; }
+        .upload-box .icon { font-size: 40px; margin-bottom: 10px; }
+        
+        /* Status Message */
+        .status-msg {
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+            font-weight: bold;
+            text-align: center;
+        }
+        .status-msg.success { background: rgba(34,197,94,0.2); color: #22c55e; border: 1px solid #22c55e; }
+        .status-msg.error { background: rgba(239,68,68,0.2); color: #ef4444; border: 1px solid #ef4444; }
+        .status-msg.hidden { display: none; }
+        
+        /* Excel Tank Select */
+        .excel-row { display: flex; gap: 15px; align-items: center; margin-bottom: 20px; }
+        .excel-row select {
+            padding: 12px 15px;
+            border-radius: 10px;
+            border: 1px solid #475569;
+            background: #0f172a;
+            color: white;
+            font-size: 14px;
+        }
+
+        @media (max-width: 768px) {
+            .tank-table { display: block; overflow-x: auto; }
+            .form-grid { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
-    <div class="admin-container">
-        <h2>🛠️ Admin Panel</h2>
-        <div class="section-box">
-            <input type="text" id="inputStationName" class="form-control" placeholder="Station Name">
-            <input type="text" id="inputBranchName" class="form-control" placeholder="Branch Name">
+
+    <!-- Password Modal -->
+    <div class="modal-overlay" id="passwordModal">
+        <div class="modal-box">
+            <h2>🔐 Admin Login</h2>
+            <p>Admin Panel သို့ဝင်ရောက်ရန် Password ရိုက်ထည့်ပါ</p>
+            <input type="password" id="passwordInput" placeholder="Password" onkeypress="if(event.key==='Enter')verifyPassword()">
+            <button onclick="verifyPassword()">ဝင်ရောက်မည်</button>
+            <div class="error-msg" id="passwordError"></div>
         </div>
-        <div class="section-box">
-            <p>📁 Excel (.xlsx) တင်ရန်</p>
-            <input type="file" id="excelFile" onchange="uploadExcel()">
+    </div>
+
+    <!-- Admin Content -->
+    <div class="container admin-content hidden" id="adminContent">
+        <div class="admin-header">
+            <h1>🛠️ Admin Control Panel</h1>
+            <a href="/index.html">← Monitor သို့ ပြန်သွားမည်</a>
         </div>
-        <div class="section-box" id="tankInputsContainer"></div>
-        <button onclick="saveAllAdminData()" class="btn-action">💾 သိမ်းဆည်းမည်</button>
+
+        <!-- Station Settings -->
+        <div class="section">
+            <div class="section-title">🏢 ဆိုင်အချက်အလက် ပြင်ဆင်ရန်</div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>ဆိုင်နာမည်</label>
+                    <input type="text" id="inputStationName" class="form-control" placeholder="Htoo Fuel Station">
+                </div>
+                <div class="form-group">
+                    <label>ဆိုင်ခွဲ</label>
+                    <input type="text" id="inputBranchName" class="form-control" placeholder="ပြင်ဦးလွင်">
+                </div>
+                <div class="form-group">
+                    <label>ဖုန်းနံပါတ်</label>
+                    <input type="text" id="inputPhone" class="form-control" placeholder="09-123456789">
+                </div>
+                <div class="form-group">
+                    <label>Logo URL</label>
+                    <input type="text" id="inputLogoUrl" class="form-control" placeholder="https://...">
+                </div>
+            </div>
+        </div>
+
+        <!-- Tank Manual Edit -->
+        <div class="section">
+            <div class="section-title">🛢️ တိုင်ကီများ Manual ပြင်ဆင်ရန်</div>
+            <div style="overflow-x: auto;">
+                <table class="tank-table">
+                    <thead>
+                        <tr>
+                            <th style="width:60px">Tank</th>
+                            <th style="width:140px">ဆီအမျိုးအစား</th>
+                            <th style="width:100px">CM</th>
+                            <th style="width:120px">Liter</th>
+                            <th style="width:120px">Max Capacity</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tankTableBody">
+                        <!-- Rows rendered by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Save Button -->
+        <div class="btn-row">
+            <button class="btn btn-primary" onclick="saveAllData()">💾 အားလုံး သိမ်းဆည်းမည်</button>
+        </div>
+
+        <!-- Excel Upload -->
+        <div class="section" style="margin-top: 25px;">
+            <div class="section-title">📊 Excel ဖိုင်မှ Auto Update</div>
+            
+            <div class="excel-row">
+                <label style="color:#94a3b8">ဘယ် Tank အတွက်လဲ:</label>
+                <select id="excelTankSelect">
+                    <option value="all">အားလုံး (Sheet တစ်ခုစီ = Tank တစ်ခု)</option>
+                    <option value="1">Tank 1</option>
+                    <option value="2">Tank 2</option>
+                    <option value="3">Tank 3</option>
+                    <option value="4">Tank 4</option>
+                    <option value="5">Tank 5</option>
+                    <option value="6">Tank 6</option>
+                </select>
+            </div>
+            
+            <div class="upload-box" onclick="document.getElementById('excelFile').click()">
+                <div class="icon">📁</div>
+                <p>Excel (.xlsx) ဖိုင်ရွေးချယ်ရန် နှိပ်ပါ</p>
+                <input type="file" id="excelFile" accept=".xlsx,.xls" onchange="uploadExcel()">
+            </div>
+        </div>
+
+        <!-- Status Message -->
+        <div class="status-msg hidden" id="statusMsg"></div>
     </div>
 
     <script>
-        function loadCurrentSettings() {
-            fetch('/api/data').then(res => res.json()).then(data => {
-                document.getElementById('inputStationName').value = data.station.name;
-                document.getElementById('inputBranchName').value = data.station.branchName;
-                const container = document.getElementById('tankInputsContainer');
-                container.innerHTML = '';
-                data.tanks.forEach(t => {
-                    container.innerHTML += `
-                        <div class="tank-row">
-                            <input type="number" class="form-control" name="tankNumber" value="${t.tankNumber}" readonly>
-                            <input type="text" class="form-control" name="fuelType" value="${t.fuelType}">
-                            <input type="text" class="form-control" name="currentCM" value="${t.currentCM}">
-                            <input type="text" class="form-control" name="currentLiter" value="${t.currentLiter}">
-                            <input type="text" class="form-control" name="maxCapacity" value="${t.maxCapacity}">
-                        </div>`;
-                });
+        const socket = io();
+        let adminPassword = '';
+
+        // Password Verification
+        function verifyPassword() {
+            const password = document.getElementById('passwordInput').value;
+            
+            fetch('/api/verify-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    adminPassword = password;
+                    document.getElementById('passwordModal').classList.add('hidden');
+                    document.getElementById('adminContent').classList.remove('hidden');
+                    loadCurrentData();
+                } else {
+                    document.getElementById('passwordError').innerText = 'Password မှားနေပါသည်';
+                }
             });
         }
-        function saveAllAdminData() {
+
+        // Load Current Data
+        function loadCurrentData() {
+            fetch('/api/data')
+                .then(res => res.json())
+                .then(data => {
+                    // Station info
+                    document.getElementById('inputStationName').value = data.station.name || '';
+                    document.getElementById('inputBranchName').value = data.station.branchName || '';
+                    document.getElementById('inputPhone').value = data.station.phoneNumber || '';
+                    document.getElementById('inputLogoUrl').value = data.station.logoUrl || '';
+
+                    // Tank table
+                    const tbody = document.getElementById('tankTableBody');
+                    tbody.innerHTML = '';
+                    
+                    const defaultFuels = ["HSD", "Premium Diesel", "92 RON", "92 RON", "95 RON", "92 RON"];
+                    const defaultMax = [30500, 30500, 30500, 30500, 15000, 15000];
+
+                    for (let i = 1; i <= 6; i++) {
+                        const tank = data.tanks ? data.tanks.find(t => t.tankNumber == i) : null;
+                        
+                        tbody.innerHTML += `
+                            <tr>
+                                <td><input type="text" name="tankNumber" value="${i}" readonly></td>
+                                <td><input type="text" name="fuelType" value="${tank ? tank.fuelType : defaultFuels[i-1]}"></td>
+                                <td><input type="text" name="currentCM" value="${tank ? tank.currentCM : '0'}"></td>
+                                <td><input type="text" name="currentLiter" value="${tank ? tank.currentLiter : '0'}"></td>
+                                <td><input type="text" name="maxCapacity" value="${tank ? tank.maxCapacity : defaultMax[i-1]}"></td>
+                            </tr>
+                        `;
+                    }
+                });
+        }
+
+        // Save All Data
+        function saveAllData() {
+            const rows = document.querySelectorAll('#tankTableBody tr');
             const tanks = [];
-            document.querySelectorAll('.tank-row').forEach(row => {
+            
+            rows.forEach(row => {
                 tanks.push({
                     tankNumber: row.querySelector('[name="tankNumber"]').value,
                     fuelType: row.querySelector('[name="fuelType"]').value,
@@ -59,18 +385,80 @@
                     maxCapacity: row.querySelector('[name="maxCapacity"]').value
                 });
             });
+
+            const stationData = {
+                name: document.getElementById('inputStationName').value,
+                branchName: document.getElementById('inputBranchName').value,
+                phoneNumber: document.getElementById('inputPhone').value,
+                logoUrl: document.getElementById('inputLogoUrl').value
+            };
+
             fetch('/api/manual-save', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ station: { name: document.getElementById('inputStationName').value, branchName: document.getElementById('inputBranchName').value }, tanks })
-            }).then(() => alert("Saved!"));
+                body: JSON.stringify({ 
+                    station: stationData, 
+                    tanks: tanks,
+                    password: adminPassword 
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                showStatus(data.success, data.success ? 
+                    '🎉 အချက်အလက်များ သိမ်းဆည်းပြီးပါပြီ!' : 
+                    '❌ ' + (data.message || 'သိမ်းဆည်းမှု မအောင်မြင်ပါ'));
+                if (data.success) loadCurrentData();
+            })
+            .catch(() => showStatus(false, '❌ Error occurred'));
         }
+
+        // Upload Excel
         function uploadExcel() {
+            const fileInput = document.getElementById('excelFile');
+            if (!fileInput.files[0]) return;
+
             const formData = new FormData();
-            formData.append('excelFile', document.getElementById('excelFile').files[0]);
-            fetch('/api/excel-upload', { method: 'POST', body: formData }).then(() => { alert("Excel Updated!"); loadCurrentSettings(); });
+            formData.append('excelFile', fileInput.files[0]);
+            formData.append('password', adminPassword);
+            formData.append('tankNumber', document.getElementById('excelTankSelect').value);
+
+            showStatus(null, '⏳ Excel ဖိုင် တွက်ချက်နေပါသည်...');
+
+            fetch('/api/excel-upload', { method: 'POST', body: formData })
+                .then(res => res.json())
+                .then(data => {
+                    showStatus(data.success, data.success ? 
+                        '🎉 Excel မှ ဒေတာများ အောင်မြင်စွာ Update ဖြစ်သွားပါပြီ!' : 
+                        '❌ ' + (data.message || 'ဖိုင်ဖတ်ရှုမှု မအောင်မြင်ပါ'));
+                    if (data.success) loadCurrentData();
+                    fileInput.value = '';
+                })
+                .catch(() => {
+                    showStatus(false, '❌ Error occurred');
+                    fileInput.value = '';
+                });
         }
-        window.onload = loadCurrentSettings;
+
+        // Show Status Message
+        function showStatus(success, message) {
+            const el = document.getElementById('statusMsg');
+            el.classList.remove('hidden', 'success', 'error');
+            if (success === null) {
+                el.style.background = 'rgba(59,130,246,0.2)';
+                el.style.color = '#3b82f6';
+                el.style.border = '1px solid #3b82f6';
+            } else {
+                el.classList.add(success ? 'success' : 'error');
+            }
+            el.innerText = message;
+        }
+
+        // Socket.IO updates
+        socket.on('dataUpdate', () => {
+            if (!document.getElementById('adminContent').classList.contains('hidden')) {
+                loadCurrentData();
+            }
+        });
     </script>
 </body>
 </html>
