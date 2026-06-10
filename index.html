@@ -1,129 +1,336 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="my">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Htoo Fuel - Live Monitor</title>
-    <link href="https://fonts.googleapis.com/css2?family=Padauk:wght@400;700&display=swap" rel="stylesheet">
+    <title>Htoo Fuel - Real-time Monitor</title>
+    <link href="[fonts.googleapis.com](https://fonts.googleapis.com/css2?family=Padauk:wght@400;700&display=swap)" rel="stylesheet">
+    <script src="/socket.io/socket.io.js"></script>
     <style>
-        body { font-family: 'Padauk', sans-serif; background-color: #0f172a; color: white; margin: 0; padding: 20px; }
-        .container { max-width: 1100px; margin: 0 auto; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         
+        body { 
+            font-family: 'Padauk', sans-serif; 
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: white; 
+            min-height: 100vh;
+            padding: 20px; 
+        }
+        
+        .container { max-width: 1200px; margin: 0 auto; }
+        
+        /* Header */
         .header { 
-            background-color: #1e293b; padding: 20px; border-radius: 15px; 
-            border-left: 10px solid #f97316; margin-bottom: 30px;
-            display: flex; justify-content: space-between; align-items: center;
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            padding: 25px 30px; 
+            border-radius: 20px; 
+            border-left: 6px solid #f97316;
+            margin-bottom: 30px;
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
         }
-        .header h1 { margin: 0; font-size: 28px; }
-        .header p { margin: 5px 0 0 0; color: #94a3b8; }
-
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
         
+        .header-left { display: flex; align-items: center; gap: 20px; }
+        .header-logo { width: 70px; height: 70px; border-radius: 12px; object-fit: cover; border: 2px solid #f97316; }
+        .header h1 { font-size: 28px; color: #f97316; }
+        .header .branch { color: #94a3b8; font-size: 14px; margin-top: 5px; }
+        .header .phone { color: #64748b; font-size: 13px; }
+        
+        .header-right { text-align: right; }
+        .live-badge { 
+            background: #22c55e; 
+            color: white; 
+            padding: 6px 14px; 
+            border-radius: 20px; 
+            font-size: 12px;
+            font-weight: bold;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .clock { font-size: 22px; font-weight: bold; color: #f97316; margin-top: 8px; }
+        .last-update { font-size: 11px; color: #64748b; margin-top: 4px; }
+        
+        /* Tank Grid */
+        .grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); 
+            gap: 25px; 
+        }
+        
+        /* Tank Card */
         .tank-card { 
-            background-color: #1e293b; border-radius: 20px; padding: 20px; 
-            border: 1px solid #334155; position: relative; overflow: hidden;
+            background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+            border-radius: 24px; 
+            padding: 25px;
+            border: 1px solid #334155;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s, box-shadow 0.3s;
         }
-        .tank-name { font-size: 14px; color: #94a3b8; font-weight: bold; text-transform: uppercase; }
-        .fuel-type { font-size: 22px; font-weight: bold; margin-bottom: 15px; }
+        .tank-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
         
-        /* Progress Bar */
-        .progress-bg { background-color: #0f172a; height: 12px; border-radius: 10px; margin: 15px 0; overflow: hidden; }
-        .progress-fill { height: 100%; border-radius: 10px; transition: width 1s ease-in-out; }
+        .tank-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .tank-number { 
+            background: #334155; 
+            padding: 6px 14px; 
+            border-radius: 8px; 
+            font-size: 12px; 
+            color: #94a3b8;
+            font-weight: bold;
+        }
+        .fuel-type { 
+            font-size: 20px; 
+            font-weight: bold;
+            padding: 6px 16px;
+            border-radius: 10px;
+        }
+        .fuel-type.hsd { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .fuel-type.premium { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+        .fuel-type.ron92 { background: linear-gradient(135deg, #10b981, #059669); }
+        .fuel-type.ron95 { background: linear-gradient(135deg, #ef4444, #dc2626); }
         
-        .stats { display: flex; justify-content: space-between; margin-top: 15px; }
-        .val-group { text-align: center; flex: 1; }
-        .val-label { font-size: 11px; color: #64748b; display: block; }
-        .val-num { font-size: 18px; font-weight: bold; color: #f97316; }
+        /* Tank Visual */
+        .tank-visual {
+            position: relative;
+            height: 180px;
+            background: #0f172a;
+            border-radius: 16px;
+            border: 2px solid #334155;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        
+        .tank-fill {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            transition: height 1s ease-out;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .tank-fill.level-critical { background: linear-gradient(0deg, #ef4444 0%, #f87171 100%); }
+        .tank-fill.level-low { background: linear-gradient(0deg, #f59e0b 0%, #fbbf24 100%); }
+        .tank-fill.level-medium { background: linear-gradient(0deg, #3b82f6 0%, #60a5fa 100%); }
+        .tank-fill.level-high { background: linear-gradient(0deg, #10b981 0%, #34d399 100%); }
+        
+        .tank-percent {
+            font-size: 36px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+        
+        .tank-markers {
+            position: absolute;
+            right: 10px;
+            top: 0;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 10px 0;
+            font-size: 10px;
+            color: #64748b;
+        }
+        
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        
+        .stat-box {
+            background: #0f172a;
+            padding: 15px 10px;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid #334155;
+        }
+        
+        .stat-label { font-size: 11px; color: #64748b; margin-bottom: 6px; }
+        .stat-value { font-size: 18px; font-weight: bold; color: #f97316; }
+        .stat-value.secondary { color: #94a3b8; }
+        
+        /* Status Indicator */
+        .status-indicator {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            animation: blink 1.5s infinite;
+        }
+        .status-indicator.online { background: #22c55e; }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        
+        /* Admin Link */
+        .admin-link {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #334155;
+            color: #94a3b8;
+            padding: 12px 20px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        .admin-link:hover { background: #475569; color: white; }
 
-        /* Colors based on fuel */
-        .f-92 { background-color: #10b981; } /* Green */
-        .f-95 { background-color: #ef4444; } /* Red */
-        .f-diesel { background-color: #f59e0b; } /* Orange/Yellow */
-        .f-default { background-color: #6366f1; }
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header { flex-direction: column; text-align: center; gap: 15px; }
+            .header-left { flex-direction: column; }
+            .header-right { text-align: center; }
+            .grid { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
 
     <div class="container">
         <div class="header">
-            <div>
-                <h1 id="stName">Htoo Fuel Station</h1>
-                <p id="stBranch">Loading...</p>
+            <div class="header-left">
+                <img id="stLogo" src="[placehold.co](https://placehold.co/100x100/orange/white?text=HTOO)" alt="Logo" class="header-logo">
+                <div>
+                    <h1 id="stName">Htoo Fuel Station</h1>
+                    <p class="branch" id="stBranch">ဆိုင်ခွဲ - Loading...</p>
+                    <p class="phone" id="stPhone">📞 Loading...</p>
+                </div>
             </div>
-            <div style="text-align: right;">
-                <div id="liveClock" style="font-size: 18px; font-weight: bold;"></div>
-                <p>Live Monitoring</p>
+            <div class="header-right">
+                <span class="live-badge">🔴 LIVE</span>
+                <div class="clock" id="liveClock">--:--:--</div>
+                <div class="last-update">နောက်ဆုံး Update: <span id="lastUpdate">--</span></div>
             </div>
         </div>
 
         <div class="grid" id="tankGrid">
-            <!-- Tanks will appear here -->
+            <!-- Tanks render here -->
         </div>
     </div>
 
+    <a href="/admin.html" class="admin-link">⚙️ Admin Panel</a>
+
     <script>
+        const socket = io();
+        
+        // Live Clock
         function updateClock() {
             const now = new Date();
-            document.getElementById('liveClock').innerText = now.toLocaleString();
+            const options = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
+            document.getElementById('liveClock').innerText = now.toLocaleTimeString('en-US', options);
         }
         setInterval(updateClock, 1000);
+        updateClock();
 
-        function fetchData() {
-            fetch('/api/data')
-                .then(res => res.json())
-                .then(data => {
-                    document.getElementById('stName').innerText = data.station.name;
-                    document.getElementById('stBranch').innerText = data.station.branchName;
-
-                    const grid = document.getElementById('tankGrid');
-                    grid.innerHTML = '';
-
-                    data.tanks.forEach(tank => {
-                        const percent = Math.min(Math.round((tank.currentLiter / tank.maxCapacity) * 100), 100) || 0;
-                        
-                        let colorClass = "f-default";
-                        const ft = tank.fuelType.toLowerCase();
-                        if (ft.includes("92")) colorClass = "f-92";
-                        else if (ft.includes("95")) colorClass = "f-95";
-                        else if (ft.includes("diesel") || ft.includes("hsd")) colorClass = "f-diesel";
-
-                        grid.innerHTML += `
-                            <div class="tank-card">
-                                <div class="tank-name">Tank ${tank.tankNumber}</div>
-                                <div class="fuel-type">${tank.fuelType}</div>
-                                
-                                <div style="display: flex; justify-content: space-between; font-size: 12px;">
-                                    <span>Level</span>
-                                    <span>${percent}%</span>
-                                </div>
-                                <div class="progress-bg">
-                                    <div class="progress-fill ${colorClass}" style="width: ${percent}%"></div>
-                                </div>
-
-                                <div class="stats">
-                                    <div class="val-group">
-                                        <span class="val-label">လက်ရှိ CM</span>
-                                        <span class="val-num">${tank.currentCM}</span>
-                                    </div>
-                                    <div class="val-group" style="border-left: 1px solid #334155; border-right: 1px solid #334155;">
-                                        <span class="val-label">လက်ရှိ လီတာ</span>
-                                        <span class="val-num">${Number(tank.currentLiter).toLocaleString()}</span>
-                                    </div>
-                                    <div class="val-group">
-                                        <span class="val-label">အပြည့်ဆံ့</span>
-                                        <span class="val-num" style="color:#94a3b8">${Number(tank.maxCapacity).toLocaleString()}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                    });
-                })
-                .catch(err => console.error("Error:", err));
+        // Get fuel type class
+        function getFuelClass(fuelType) {
+            const ft = fuelType.toLowerCase();
+            if (ft.includes('premium')) return 'premium';
+            if (ft.includes('95')) return 'ron95';
+            if (ft.includes('92')) return 'ron92';
+            if (ft.includes('hsd') || ft.includes('diesel')) return 'hsd';
+            return 'ron92';
         }
 
-        // ၅ စက္ကန့်တစ်ခါ အလိုအလျောက် Data အသစ်ဆွဲမည်
-        setInterval(fetchData, 5000);
-        fetchData();
+        // Get level class based on percentage
+        function getLevelClass(percent) {
+            if (percent <= 20) return 'level-critical';
+            if (percent <= 40) return 'level-low';
+            if (percent <= 70) return 'level-medium';
+            return 'level-high';
+        }
+
+        // Render tanks
+        function renderTanks(data) {
+            // Update header
+            document.getElementById('stName').innerText = data.station.name || 'Htoo Fuel Station';
+            document.getElementById('stBranch').innerText = 'ဆိုင်ခွဲ - ' + (data.station.branchName || '');
+            document.getElementById('stPhone').innerText = '📞 ' + (data.station.phoneNumber || '');
+            document.getElementById('stLogo').src = data.station.logoUrl || '[placehold.co](https://placehold.co/100x100/orange/white?text=HTOO)';
+            document.getElementById('lastUpdate').innerText = data.lastUpdated || '--';
+
+            const grid = document.getElementById('tankGrid');
+            grid.innerHTML = '';
+
+            data.tanks.forEach(tank => {
+                const currentLiter = parseFloat(tank.currentLiter) || 0;
+                const maxCapacity = parseFloat(tank.maxCapacity) || 1;
+                const percent = Math.min(Math.round((currentLiter / maxCapacity) * 100), 100);
+                
+                const fuelClass = getFuelClass(tank.fuelType);
+                const levelClass = getLevelClass(percent);
+
+                grid.innerHTML += `
+                    <div class="tank-card">
+                        <div class="status-indicator online"></div>
+                        
+                        <div class="tank-header">
+                            <span class="tank-number">TANK ${tank.tankNumber}</span>
+                            <span class="fuel-type ${fuelClass}">${tank.fuelType}</span>
+                        </div>
+
+                        <div class="tank-visual">
+                            <div class="tank-fill ${levelClass}" style="height: ${percent}%">
+                                <span class="tank-percent">${percent}%</span>
+                            </div>
+                            <div class="tank-markers">
+                                <span>100%</span>
+                                <span>75%</span>
+                                <span>50%</span>
+                                <span>25%</span>
+                                <span>0%</span>
+                            </div>
+                        </div>
+
+                        <div class="stats-grid">
+                            <div class="stat-box">
+                                <div class="stat-label">အမြင့် (CM)</div>
+                                <div class="stat-value">${tank.currentCM || 'N/A'}</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">လက်ရှိ (L)</div>
+                                <div class="stat-value">${Number(currentLiter).toLocaleString()}</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">အပြည့်ဆံ့ (L)</div>
+                                <div class="stat-value secondary">${Number(maxCapacity).toLocaleString()}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // Socket.IO real-time updates
+        socket.on('dataUpdate', (data) => {
+            console.log('Real-time update received');
+            renderTanks(data);
+        });
+
+        // Initial fetch
+        fetch('/api/data')
+            .then(res => res.json())
+            .then(data => renderTanks(data))
+            .catch(err => console.error('Error:', err));
     </script>
 </body>
 </html>
