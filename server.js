@@ -10,36 +10,34 @@ const fs = require('fs');
 app.use(express.json());
 app.use(express.static('public'));
 
+// ဖိုင်တင်ရန် သတ်မှတ်ချက်
 const upload = multer({ dest: 'uploads/' });
 
+// ဆိုင်အချက်အလက် (Default)
 let stationData = {
     name: "Htoo Fuel Station",
-    branchName: "ပြင်ဦးလွင်",
+    branchName: "ပြင်ဦးလွင်ဘဏ်ခွဲ",
     phoneNumber: "09-123456789",
     logoUrl: "https://placehold.co/100x100/orange/white?text=HTOO",
     adminPassword: "123"
 };
 
+// တိုင်ကီ (၆) လုံး အချက်အလက် (Default)
 let tanks = [
-    { tankNumber: 1, fuelType: "HSD", maxCapacity: 30500, currentCM: "120.5", currentLiter: 15200 },
-    { tankNumber: 2, fuelType: "Premium Diesel", maxCapacity: 30500, currentCM: "175.2", currentLiter: 24100 },
-    { tankNumber: 3, fuelType: "92 RON", maxCapacity: 30500, currentCM: "142.0", currentLiter: 18500 },
-    { tankNumber: 4, fuelType: "92 RON", maxCapacity: 30500, currentCM: "70.4", currentLiter: 8900 },
-    { tankNumber: 5, fuelType: "95 RON", maxCapacity: 15000, currentCM: "165.1", currentLiter: 12000 },
-    { tankNumber: 6, fuelType: "92 RON", maxCapacity: 15000, currentCM: "65.3", currentLiter: 4500 }
+    { tankNumber: 1, fuelType: "HSD", maxCapacity: 30500, currentCM: "0", currentLiter: 0 },
+    { tankNumber: 2, fuelType: "Premium Diesel", maxCapacity: 30500, currentCM: "0", currentLiter: 0 },
+    { tankNumber: 3, fuelType: "92 RON", maxCapacity: 30500, currentCM: "0", currentLiter: 0 },
+    { tankNumber: 4, fuelType: "92 RON", maxCapacity: 30500, currentCM: "0", currentLiter: 0 },
+    { tankNumber: 5, fuelType: "95 RON", maxCapacity: 15000, currentCM: "0", currentLiter: 0 },
+    { tankNumber: 6, fuelType: "92 RON", maxCapacity: 15000, currentCM: "0", currentLiter: 0 }
 ];
 
-app.get('/api/data', (req, res) => { res.json({ station: stationData, tanks: tanks }); });
-
-app.post('/api/admin/update-station', (req, res) => {
-    const { password, name, branchName, phoneNumber, logoUrl } = req.body;
-    if (password !== stationData.adminPassword) return res.status(403).json({ success: false, message: "Password မှားယွင်းနေပါသည်။" });
-    stationData.name = name; stationData.branchName = branchName; stationData.phoneNumber = phoneNumber; stationData.logoUrl = logoUrl;
-    io.emit('dataUpdate', { station: stationData, tanks: tanks });
-    res.json({ success: true, message: "Corporate profile updated successfully." });
+// Front-end ကနေ ဒေတာလှမ်းတောင်းလျှင် ပေးမည့် API
+app.get('/api/data', (req, res) => {
+    res.json({ station: stationData, tanks: tanks });
 });
 
-// ✅ လက်မန်ဖြင့် ဝင်ပြင်ခြင်း API
+// Admin ကနေ တိုင်ကီဒေတာအားလုံးကို Form နှင့် ကိုယ်တိုင်ပြင်လျှင် သုံးမည့် API
 app.post('/api/admin/update-all-tanks', (req, res) => {
     try {
         const password = req.body.password;
@@ -53,10 +51,10 @@ app.post('/api/admin/update-all-tanks', (req, res) => {
                 if (req.body[`tank${i}_fuelType`] !== undefined) tanks[index].fuelType = String(req.body[`tank${i}_fuelType`]).trim();
                 if (req.body[`tank${i}_maxCapacity`] !== undefined) tanks[index].maxCapacity = Number(req.body[`tank${i}_maxCapacity`]) || 0;
                 if (req.body[`tank${i}_currentCM`] !== undefined) tanks[index].currentCM = String(req.body[`tank${i}_currentCM`]).trim();
-                if (req.body[`tank${i}_currentLiter`] !== undefined) tanks[index].currentLiter = Number(req.body[`tank${i}_currentLiter`]);
+                if (req.body[`tank${i}_currentLiter`] !== undefined) tanks[index].currentLiter = Number(req.body[`tank${i}_currentLiter`]) || 0;
             }
         }
-
+       
         io.emit('dataUpdate', { station: stationData, tanks: tanks });
         return res.json({ success: true, message: "တိုင်ကီအားလုံးကို အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီဗျာ။" });
     } catch (error) {
@@ -64,81 +62,128 @@ app.post('/api/admin/update-all-tanks', (req, res) => {
     }
 });
 
-// ✅ စစ်ဆေးပြီးသား Excel Multi-Sheet & Multi-Column ဖတ်ရှုသည့် Logic အမှန်
+// ✅ မူရင်း Excel Dip Chart (Sheet ၆ ခုစလုံး) ကို အမှားအယွင်းမရှိ အော်တိုဖတ်ပေးမည့် စွမ်းထက်ဆုံး Excel Upload API
 app.post('/api/admin/upload-excel', upload.single('excelFile'), (req, res) => {
     const { password } = req.body;
+   
+    // Password စစ်ဆေးခြင်း
     if (password !== stationData.adminPassword) {
-        if(req.file) fs.unlinkSync(req.file.path);
+        if (req.file) fs.unlinkSync(req.file.path);
         return res.status(403).json({ success: false, message: "Password မှားယွင်းနေပါသည်။" });
     }
     if (!req.file) return res.status(400).json({ success: false, message: "Excel ဖိုင်တင်ရန် လိုအပ်ပါသည်။" });
 
     try {
+        // Excel ဖိုင်ကို ဖတ်ခြင်း
         const workbook = xlsx.readFile(req.file.path);
-        const sheetNames = workbook.SheetNames;
+       
+        // Sheet အားလုံးကို တစ်ခုချင်းစီပတ်ပြီး သက်ဆိုင်ရာ Tank ဒေတာ ရှာဖွေခြင်း
+        workbook.SheetNames.forEach(sheetName => {
+            const worksheet = workbook.Sheets[sheetName];
+           
+            // Row ဒေတာများကို Matrix (2D Array) အဖြစ် ပြောင်းလဲခြင်း (ခေါင်းစီးမျိုးစုံ ရှိနေနိုင်သောကြောင့် ဖြစ်သည်)
+            const rangeData = xlsx.utils.sheet_to_json(worksheet, { header: 1 });
+           
+            let tankNumber = null;
+            let maxCapacity = 0;
+            let foundHeaderRow = -1;
 
-        tanks.forEach((tank, tIndex) => {
-            // စာလုံးအကြီးသေး၊ Space မရွေး တိုင်ကီနံပါတ်ပါဝင်သော Sheet ကို ရှာဖွေစစ်ဆေးသည်
-            const matchedSheetName = sheetNames.find(name => {
-                const cleanName = name.toLowerCase().replace(/[^0-9a-z]/g, '');
-                return cleanName.includes(`tank${tank.tankNumber}`) || cleanName === `tank${tank.tankNumber}` || (cleanName.includes('tank') && cleanName.includes(String(tank.tankNumber)));
-            });
+            // (၁) အပေါ်ပိုင်း Header မှာ Tank နံပါတ် နှင့် Capacity ကို လိုက်ရှာခြင်း
+            for (let i = 0; i < Math.min(rangeData.length, 10); i++) {
+                const rowStr = JSON.stringify(rangeData[i] || []).toLowerCase();
+               
+                // Tank No. ရှာဖွေခြင်း
+                if (rowStr.includes("tank no") || rowStr.includes("tankno")) {
+                    const match = rowStr.match(/tank\s*(?:no\.?|number)?\s*\(?(\d+)\)?/i) || rowStr.match(/tank\s*no\s*(\d+)/i) || rowStr.match(/(\d+)/);
+                    if (match) tankNumber = parseInt(match[1]);
+                }
+               
+                // Capacity ရှာဖွေခြင်း
+                if (rowStr.includes("capacity")) {
+                    const capMatch = rowStr.match(/(\d[\d,]*)/);
+                    if (capMatch) maxCapacity = parseInt(capMatch[1].replace(/,/g, ''));
+                }
+            }
 
-            if (!matchedSheetName) return;
+            // အကယ်၍ Sheet နာမည်ထဲမှာ Tank ပါခဲ့ရင်လည်း နံပါတ်ထုတ်ယူခြင်း (ဥပမာ - Tank 1)
+            if (!tankNumber) {
+                const nameMatch = sheetName.match(/tank\s*(\d+)/i) || sheetName.match(/(\d+)/);
+                if (nameMatch) tankNumber = parseInt(nameMatch[1]);
+            }
 
-            const worksheet = workbook.Sheets[matchedSheetName];
-            // defval: "" ကို သုံးပြီး null/undefined ဖြစ်ခြင်းမှ ကြိုတင်ကာကွယ်ထားသည်
-            const rawRows = xlsx.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+            // တိုင်ကီနံပါတ် ရှိမှသာ ရှေ့ဆက်ဖတ်မည်
+            if (tankNumber && tankNumber >= 1 && tankNumber <= 6) {
+                const tIndex = tanks.findIndex(t => t.tankNumber === tankNumber);
+                if (tIndex !== -1 && maxCapacity > 0) {
+                    tanks[tIndex].maxCapacity = maxCapacity; // မူရင်း Capacity အတိုင်း အော်တိုပြင်ပေးသည်
+                }
 
-            let maxSrNo = -1;
-            let finalCM = "0";
-            let finalLiter = 0;
+                let maxSrNo = -1;
+                let finalCM = "0";
+                let finalLiter = 0;
 
-            // Sheet ထဲရှိ သုံးရမည့် Row 7 မှစ၍ အကုန်လုံးကို လိုက်ဖတ်ပြီး အကြီးဆုံး Sr.No ရှိသည့် Row ကို ရှာဖွေသည်
-            for (let r = 7; r < rawRows.length; r++) {
-                let row = rawRows[r];
-                if (!row || row.length === 0) continue;
+                // (၂) ဇယားကွက်ထဲမှ Sr.No, CM, Liter ဒေတာအတွဲများကို ဒေါင်လိုက် လိုက်ရှာခြင်း
+                // ခေါင်းစီးအတန်း (Sr.No ပါဝင်သော အတန်း) ကို အရင်ရှာပါမည်
+                for (let i = 0; i < rangeData.length; i++) {
+                    const row = rangeData[i] || [];
+                    if (row.some(cell => String(cell).toLowerCase().replace(/\s+/g, '') === 'sr.no')) {
+                        foundHeaderRow = i;
+                        break;
+                    }
+                }
 
-                // ၃ ကော်လံစီ (Sr.No, CM, Liter) ခွဲလျက် ဘေးတိုက်ရှိနေသော ဒေတာအတွဲများကို ပတ်ဖတ်သည်
-                for (let colIdx = 0; colIdx < row.length; colIdx += 3) {
-                    if (row[colIdx] === undefined || row[colIdx] === null) continue;
+                if (foundHeaderRow !== -1) {
+                    const headerRow = rangeData[foundHeaderRow];
                    
-                    let srVal = parseInt(String(row[colIdx]).trim());
-                    let cmVal = row[colIdx + 1] !== undefined && row[colIdx + 1] !== null ? String(row[colIdx + 1]).trim() : "";
-                    let litVal = row[colIdx + 2] !== undefined && row[colIdx + 2] !== null ? String(row[colIdx + 2]).trim() : "";
+                    // ခေါင်းစီးအတန်းအောက်က ဒေတာအားလုံးကို စစ်ဆေးခြင်း
+                    for (let r = foundHeaderRow + 1; r < rangeData.length; r++) {
+                        const row = rangeData[r] || [];
+                       
+                        // တစ်တန်းထဲမှာ ဒေတာအတွဲ ၃ တွဲရှိနိုင်သောကြောင့် ၃ ကော်လံစီ ခွဲထုတ်စစ်ဆေးခြင်း
+                        for (let c = 0; c < row.length; c += 3) {
+                            let srNoVal = parseInt(String(row[c]).trim());
+                            let cmVal = row[c+1];
+                            let litVal = row[c+2];
 
-                    if (!isNaN(srVal) && litVal !== "") {
-                        let cleanLit = parseInt(litVal.replace(/,/g, ''));
-                        if (!isNaN(cleanLit) && cleanLit >= 0) {
-                            // အစဉ်လိုက်ဖြစ်နေသော Sr.No ထဲက အကြီးဆုံး (နောက်ဆုံးထွက်) ဒေတာကို ကောက်ယူသည်
-                            if (srVal > maxSrNo) {
-                                maxSrNo = srVal;
-                                finalLiter = cleanLit;
-                                finalCM = cmVal.replace('..', '.') || "0";
+                            if (!isNaN(srNoVal) && cmVal !== undefined && litVal !== undefined) {
+                                // စာရင်းထဲတွင် Sr.No အကြီးဆုံး (အောက်ဆုံး) ဖြစ်မည့် နောက်ဆုံးထွက် ဒေတာကို မှတ်သားခြင်း
+                                if (srNoVal > maxSrNo) {
+                                    maxSrNo = srNoVal;
+                                    finalCM = String(cmVal).trim();
+                                    finalLiter = parseInt(String(litVal).replace(/,/g, '').trim()) || 0;
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            // အကယ်၍ ကိုက်ညီသော ဒေတာအတွဲ တွေ့ရှိပါက သိမ်းဆည်းမည်
-            if (maxSrNo !== -1) {
-                tanks[tIndex].currentLiter = finalLiter;
-                tanks[tIndex].currentCM = finalCM;
+                // (၃) ရှာဖွေတွေ့ရှိသော နောက်ဆုံးထွက်တန်ဖိုးကို Memory ထဲတွင် သွားရောက် အပ်ဒိတ်လုပ်ခြင်း
+                if (maxSrNo !== -1 && tIndex !== -1) {
+                    tanks[tIndex].currentCM = finalCM;
+                    tanks[tIndex].currentLiter = finalLiter;
+                }
             }
         });
 
+        // ဖိုင်ကို ရှင်းထုတ်ပြီး Socket.io ကနေ Front-end UI ဆီ Real-time လှမ်းပို့ခြင်း
         fs.unlinkSync(req.file.path);
         io.emit('dataUpdate', { station: stationData, tanks: tanks });
-        return res.json({ success: true, message: "Excel ဖိုင်ရှိ Sheet အားလုံးကို အောင်မြင်စွာ ဖတ်ရှုပြင်ဆင်ပြီးပါပြီဗျာ။" });
+       
+        return res.json({ success: true, message: "မူရင်း Excel Dip Chart ထဲမှ နောက်ဆုံးထွက် အချက်အလက်အားလုံးကို အောင်မြင်စွာ ဖတ်ပြီးပါပြီဗျာ။" });
 
     } catch (error) {
-        if(req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
         res.status(500).json({ success: false, message: "Excel Read Error: " + error.message });
     }
 });
 
-io.on('connection', (socket) => { console.log('Client Connected'); });
+// Socket Connection ငြိမ်မငြိမ် စောင့်ကြည့်ခြင်း
+io.on('connection', (socket) => {
+    console.log('Client Connected');
+});
 
+// Port သတ်မှတ်ချက်
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+http.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});
