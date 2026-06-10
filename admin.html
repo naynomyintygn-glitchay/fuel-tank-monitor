@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,93 +6,115 @@
     <title>Htoo Fuel Station - Admin Panel</title>
     <link href="https://fonts.googleapis.com/css2?family=Padauk:wght=400;700&display=swap" rel="stylesheet">
     <style>
-        * { box-sizing: border-box; }
-        body {
-            font-family: 'Padauk', sans-serif;
-            background-color: #0f172a;
-            color: #f1f5f9;
-            margin: 0; padding: 20px;
-            display: flex; justify-content: center; align-items: center; min-height: 100vh;
-        }
-        .admin-card {
-            background-color: #1e293b; padding: 30px; border-radius: 16px;
-            width: 100%; max-width: 450px; border: 1px solid #334155;
-            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);
-        }
-        h2 { margin-top: 0; color: #ffffff; text-align: center; font-size: 22px; border-bottom: 2px solid #334155; padding-bottom: 10px; }
-        .form-group { margin-bottom: 20px; }
-        label { display: block; margin-bottom: 8px; font-size: 14px; color: #94a3b8; }
-        input[type="file"] {
-            display: block; width: 100%; padding: 10px; background-color: #0f172a;
-            border: 1px dashed #475569; border-radius: 8px; color: #94a3b8; cursor: pointer;
-        }
-        .btn-submit {
-            width: 100%; background-color: #f97316; color: white; border: none;
-            padding: 12px; font-size: 15px; font-weight: bold; border-radius: 8px;
-            cursor: pointer; transition: background 0.2s; margin-top: 10px;
-        }
-        .btn-submit:hover { background-color: #ea580c; }
-        .status-msg { text-align: center; margin-top: 15px; font-size: 13px; font-weight: bold; }
-        .status-success { color: #4ade80; }
-        .status-error { color: #f87171; }
+        body { font-family: 'Padauk', sans-serif; background-color: #0f172a; color: #f1f5f9; margin: 0; padding: 20px; }
+        .admin-container { max-width: 700px; margin: 0 auto; background-color: #1e293b; padding: 25px; border-radius: 16px; border: 1px solid #334155; }
+        h2 { border-bottom: 2px solid #334155; padding-bottom: 10px; margin-top: 0; }
+        .tank-row { display: grid; grid-template-columns: 80px 120px 100px 120px 120px; gap: 10px; margin-bottom: 12px; align-items: center; }
+        .form-control { background-color: #0f172a; border: 1px solid #475569; color: white; padding: 8px; border-radius: 6px; width: 100%; }
+        .btn-action { background-color: #f97316; color: white; border: none; padding: 12px 20px; font-weight: bold; border-radius: 8px; cursor: pointer; width: 100%; margin-top: 15px; }
+        .upload-box { border: 2px dashed #475569; padding: 25px; border-radius: 10px; text-align: center; margin-bottom: 20px; background-color: #0f172a; cursor: pointer; }
+        .msg { font-weight: bold; text-align: center; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-    <div class="admin-card">
-        <h2>📊 ဆီတိုင်ကီ ဒေတာတင်ရန် (Admin)</h2>
+    <div class="admin-container">
+        <h2>🛠️ Tank Control Management (Admin)</h2>
        
-        <form id="uploadForm" enctype="multipart/form-data">
-            <div class="form-group">
-                <label for="excelFile">Excel ဖိုင် သို့မဟုတ် CSV ဖိုင် ရွေးချယ်ပါ</label>
-                <input type="file" id="excelFile" name="excelFile" accept=".xlsx, .xls, .csv" required>
-            </div>
-            <button type="submit" class="btn-submit">🚀 ဒေတာများကို Live အပ်ဒိတ်လုပ်မည်</button>
-        </form>
+        <div class="upload-box" onclick="document.getElementById('excelFile').click()">
+            <p style="margin:0; font-size:15px;">📊 စာရွက်စာတမ်းဖိုင် (Excel) အား ဤနေရာတွင်နှိပ်၍ တင်ပေးပါ</p>
+            <input type="file" id="excelFile" style="display:none" accept=".xlsx, .xls" onchange="uploadExcel()">
+        </div>
 
-        <div id="statusMessage" class="status-msg"></div>
+        <form id="manualForm">
+            <div class="tank-row" style="font-weight: bold; font-size: 13px; color: #94a3b8;">
+                <div>တိုင်ကီ No</div><div>ဆီအမျိုးအစား</div><div>လက်ရှိ CM</div><div>လက်ရှိ Liter</div><div>ဆံ့ဝင်ဆံ့မှု (Max)</div>
+            </div>
+           
+            <div id="tankInputsContainer">
+                </div>
+
+            <button type="button" onclick="saveManualData()" class="btn-action">💾 အချက်အလက်များအားလုံးအား သိမ်းဆည်းမည်</button>
+        </form>
+        <div id="statusMsg" class="msg"></div>
     </div>
 
     <script>
-        document.getElementById('uploadForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-           
-            const fileInput = document.getElementById('excelFile');
-            const statusDiv = document.getElementById('statusMessage');
-           
-            if (!fileInput.files[0]) {
-                statusDiv.className = "status-msg status-error";
-                statusDiv.innerText = "ကျေးဇူးပြု၍ ဖိုင်ရွေးချယ်ပေးပါဗျာ။";
-                return;
-            }
+        const fuelTypesFallback = ["HSD (Tank 1)", "Premium Diesel (Tank 2)", "92 RON (Tank 3)", "92 RON (Tank 4)", "95 RON (Tank 5)", "92 RON (Tank 6)"];
+        const capacitiesFallback = [30500, 30500, 30500, 30500, 15000, 15000];
 
-            statusDiv.className = "status-msg";
-            statusDiv.style.color = "#94a3b8";
-            statusDiv.innerText = "ဖိုင်ကို ပို့ဆောင်နေပါသည်...";
+        function initForm() {
+            fetch('/api/data').then(res => res.json()).then(data => {
+                const container = document.getElementById('tankInputsContainer');
+                container.innerHTML = '';
+               
+                for(let i=1; i<=6; i++) {
+                    const existing = data.tanks ? data.tanks.find(t => t.tankNumber == i) : null;
+                    const cm = existing ? existing.currentCM : "0";
+                    const liter = existing ? existing.currentLiter : "0";
+                    const fType = existing ? existing.fuelType : fuelTypesFallback[i-1];
+                    const cap = existing ? existing.maxCapacity : capacitiesFallback[i-1];
+
+                    container.innerHTML += `
+                        <div class="tank-row">
+                            <input type="number" class="form-control" name="tankNumber" value="${i}" readonly>
+                            <input type="text" class="form-control" name="fuelType" value="${fType}">
+                            <input type="text" class="form-control" name="currentCM" value="${cm}">
+                            <input type="text" class="form-control" name="currentLiter" value="${liter}">
+                            <input type="text" class="form-control" name="maxCapacity" value="${cap}">
+                        </div>
+                    `;
+                }
+            });
+        }
+
+        function saveManualData() {
+            const rows = document.querySelectorAll('#tankInputsContainer .tank-row');
+            const tanks = [];
+            rows.forEach(row => {
+                tanks.push({
+                    tankNumber: row.querySelector('[name="tankNumber"]').value,
+                    fuelType: row.querySelector('[name="fuelType"]').value,
+                    currentCM: row.querySelector('[name="currentCM"]').value,
+                    currentLiter: row.querySelector('[name="currentLiter"]').value,
+                    maxCapacity: row.querySelector('[name="maxCapacity"]').value
+                });
+            });
+
+            fetch('/api/manual-save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tanks })
+            }).then(res => res.json()).then(res => {
+                const msg = document.getElementById('statusMsg');
+                msg.style.color = "#4ade80"; msg.innerText = "🎉 အချက်အလက်များအား ကွက်တိ Live ပြောင်းလဲသိမ်းဆည်းပြီးပါပြီဗျာ။";
+                initForm();
+            });
+        }
+
+        function uploadExcel() {
+            const fileInput = document.getElementById('excelFile');
+            if(!fileInput.files[0]) return;
 
             const formData = new FormData();
             formData.append('excelFile', fileInput.files[0]);
 
-            // Backend Server သို့ Excel ဖိုင်လှမ်းတင်ခြင်း (Endpoint: /api/upload)
-            fetch('/api/upload', {
-                method: 'POST',
-                body: formData
-            })
-            .then(res => {
-                if (!res.ok) throw new Error('Server တုံ့ပြန်မှု မမှန်ကန်ပါ');
-                return res.json();
-            })
+            document.getElementById('statusMsg').style.color = "#94a3b8";
+            document.getElementById('statusMsg').innerText = "Excel ဖိုင်တွက်ချက်မှုကို ဆောင်ရွက်နေပါသည်...";
+
+            fetch('/api/excel-upload', { method: 'POST', body: formData })
+            .then(res => res.json())
             .then(data => {
-                statusDiv.className = "status-msg status-success";
-                statusDiv.innerText = "🎉 အောင်မြင်ပါသည်။ ဆီတိုင်ကီ ဒေတာများကို Real-time ပြောင်းလဲလိုက်ပါပြီဗျာ!";
-                fileInput.value = ''; // Clear Form
-            })
-            .catch(err => {
-                console.error("Upload error:", err);
-                statusDiv.className = "status-msg status-error";
-                statusDiv.innerText = "❌ ဒေတာတင်ခြင်း မအောင်မြင်ပါ။ Server Endpoint သို့မဟုတ် Excel Column များကို စစ်ဆေးပါဗျာ။";
+                document.getElementById('statusMsg').style.color = "#4ade80";
+                document.getElementById('statusMsg').innerText = "🎉 Excel ဖိုင်အတွင်းရှိ Sheet တိုင်း၏ နောက်ဆုံးစာကြောင်း Row အချက်အလက်များကို အောင်မြင်စွာ ဖတ်ရှုတွက်ချက်ပြီးပါပြီဗျာ။";
+                initForm();
+            }).catch(err => {
+                document.getElementById('statusMsg').style.color = "#f87171";
+                document.getElementById('statusMsg').innerText = "❌ အမှားအယွင်းဖြစ်သွားပါသည်။ ဖိုင်ပုံစံကို စစ်ဆေးပါ။";
             });
-        });
+        }
+
+        window.onload = initForm;
     </script>
 </body>
 </html>
