@@ -1,383 +1,97 @@
 <!DOCTYPE html>
-<html lang="my">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fuel Tank Monitor - Admin Panel</title>
+    <title>Htoo Fuel Station - Admin Panel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Padauk:wght=400;700&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --bg-color: #0b0f19;
-            --card-bg: #151c2c;
-            --text-main: #ffffff;
-            --text-sub: #8a99ad;
-            --border-color: #232d42;
-            --primary-btn: #3b82f6;
-            --success-btn: #1dd1a1;
-            --warning-color: #ff9f43;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
+        * { box-sizing: border-box; }
         body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            min-height: 100vh;
+            font-family: 'Padauk', sans-serif;
+            background-color: #0f172a;
+            color: #f1f5f9;
+            margin: 0; padding: 20px;
+            display: flex; justify-content: center; align-items: center; min-height: 100vh;
         }
-
-        .admin-container {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 25px;
-            width: 100%;
-            max-width: 780px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-            margin-bottom: 30px;
+        .admin-card {
+            background-color: #1e293b; padding: 30px; border-radius: 16px;
+            width: 100%; max-width: 450px; border: 1px solid #334155;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);
         }
-
-        h2 {
-            font-size: 20px;
-            font-weight: 600;
-            margin-bottom: 20px;
-            text-align: center;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 12px;
-        }
-
-        .form-section {
-            margin-bottom: 25px;
-            background: rgba(255, 255, 255, 0.02);
-            padding: 15px;
-            border-radius: 8px;
-            border: 1px dashed var(--border-color);
-        }
-
-        .section-title {
-            font-size: 13px;
-            color: var(--warning-color);
-            font-weight: bold;
-            margin-bottom: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .form-group {
-            margin-bottom: 15px;
-        }
-
-        label {
-            display: block;
-            font-size: 12px;
-            color: var(--text-sub);
-            margin-bottom: 6px;
-        }
-
-        input[type="text"],
-        input[type="number"],
-        input[type="password"],
+        h2 { margin-top: 0; color: #ffffff; text-align: center; font-size: 22px; border-bottom: 2px solid #334155; padding-bottom: 10px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-size: 14px; color: #94a3b8; }
         input[type="file"] {
-            width: 100%;
-            padding: 10px 14px;
-            background: #0b0f19;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            color: #fff;
-            font-size: 14px;
-            outline: none;
+            display: block; width: 100%; padding: 10px; background-color: #0f172a;
+            border: 1px dashed #475569; border-radius: 8px; color: #94a3b8; cursor: pointer;
         }
-
-        input:focus {
-            border-color: var(--primary-btn);
+        .btn-submit {
+            width: 100%; background-color: #f97316; color: white; border: none;
+            padding: 12px; font-size: 15px; font-weight: bold; border-radius: 8px;
+            cursor: pointer; transition: background 0.2s; margin-top: 10px;
         }
-
-        .tank-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 15px;
-            font-size: 13px;
-        }
-
-        .tank-table th, .tank-table td {
-            border: 1px solid var(--border-color);
-            padding: 8px;
-            text-align: center;
-        }
-
-        .tank-table th {
-            background-color: #0b0f19;
-            color: var(--text-sub);
-            font-weight: 600;
-        }
-
-        .tank-table input {
-            padding: 6px 8px;
-            text-align: center;
-        }
-
-        .profile-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-        }
-
-        .btn {
-            width: 100%;
-            padding: 12px;
-            border: none;
-            border-radius: 6px;
-            color: #fff;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        .btn-primary { background: var(--primary-btn); }
-        .btn-primary:hover { background: #2563eb; }
-
-        .btn-success { background: var(--success-btn); color: #0b0f19; }
-        .btn-success:hover { background: #10ac84; }
-
-        .btn-warning { background: var(--warning-color); color: #0b0f19; }
-        .btn-warning:hover { background: #e18728; }
-
-        #message {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 12px 20px;
-            border-radius: 6px;
-            font-size: 14px;
-            text-align: center;
-            z-index: 9999;
-            display: none;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-        }
-        .msg-success { background: #1dd1a1; color: #0b0f19; font-weight: bold; }
-        .msg-error { background: #ff6b6b; color: #fff; font-weight: bold; }
+        .btn-submit:hover { background-color: #ea580c; }
+        .status-msg { text-align: center; margin-top: 15px; font-size: 13px; font-weight: bold; }
+        .status-success { color: #4ade80; }
+        .status-error { color: #f87171; }
     </style>
 </head>
 <body>
 
-    <div class="admin-container">
-        <h2>⛽ Admin Control Panel</h2>
+    <div class="admin-card">
+        <h2>📊 ဆီတိုင်ကီ ဒေတာတင်ရန် (Admin)</h2>
        
-        <div class="form-group" style="max-width: 300px; margin: 0 auto 20px auto;">
-            <label for="adminPassword" style="text-align: center;">Admin Password ရိုက်ထည့်ပါ *</label>
-            <input type="password" id="adminPassword" placeholder="နံပါတ်ကုဒ် ရိုက်ပါ" style="text-align: center;" required>
-        </div>
+        <form id="uploadForm" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="excelFile">Excel ဖိုင် သို့မဟုတ် CSV ဖိုင် ရွေးချယ်ပါ</label>
+                <input type="file" id="excelFile" name="excelFile" accept=".xlsx, .xls, .csv" required>
+            </div>
+            <button type="submit" class="btn-submit">🚀 ဒေတာများကို Live အပ်ဒိတ်လုပ်မည်</button>
+        </form>
 
-        <div class="form-section">
-            <div class="section-title">✍️ လက်မန်ဖြင့် တိုင်ကီစာရင်း ဝင်ပြင်ရန်</div>
-            <form id="manualTanksForm">
-                <table class="tank-table">
-                    <thead>
-                        <tr>
-                            <th>တိုင်ကီ</th>
-                            <th>ဆီအမျိုးအစား (ပြင်နိုင်သည်)</th>
-                            <th>အမြင့်ဆုံးဆံ့ဝင်ဆံ့အား (L)</th>
-                            <th>လက်ရှိဆီအမြင့် (CM)</th>
-                            <th>လက်ရှိဆီပမာဏ (Liter)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tanksTableBody">
-                        </tbody>
-                </table>
-                <button type="submit" class="btn btn-warning">💾 တိုင်ကီအချက်အလက်များ အားလုံးကို ဝင်ပြင်မည်</button>
-            </form>
-        </div>
-
-        <div class="form-section">
-            <div class="section-title">📊 Excel တင်ပြီး Auto Update လုပ်ရန်</div>
-            <form id="excelForm">
-                <div class="form-group">
-                    <label for="excelFile">ဆီတိုင်ကီအားလုံးပါဝင်သော Excel ဖိုင်ကိုရွေးချယ်ပါ</label>
-                    <input type="file" id="excelFile" accept=".xlsx, .xls" required>
-                </div>
-                <button type="submit" class="btn btn-success">📤 Excel တင်ပြီး တိုင်ကီအားလုံး ပြောင်းမည်</button>
-            </form>
-        </div>
-
-        <div class="form-section">
-            <div class="section-title">⚙️ ဆီဆိုင်အချက်အလက် ပြင်ဆင်ရန်</div>
-            <form id="stationForm">
-                <div class="profile-grid">
-                    <div class="form-group">
-                        <label for="stationName">ဆီဆိုင်အမည်</label>
-                        <input type="text" id="stationName" placeholder="Htoo Fuel Station">
-                    </div>
-                    <div class="form-group">
-                        <label for="branchName">ဆီဆိုင်ခွဲအမည်</label>
-                        <input type="text" id="branchName" placeholder="ပြင်ဦးလွင်">
-                    </div>
-                </div>
-                <div class="profile-grid">
-                    <div class="form-group">
-                        <label for="phoneNumber">ဖုန်းနံပါတ်</label>
-                        <input type="text" id="phoneNumber" placeholder="09-123456789">
-                    </div>
-                    <div class="form-group">
-                        <label for="logoUrl">Logo URL (Image Link)</label>
-                        <input type="text" id="logoUrl" placeholder="https://...">
-                    </div>
-                </div>
-                <button type="submit" class="btn btn-primary">💾 ဆိုင်အချက်အလက်များ သိမ်းဆည်းရန်</button>
-            </form>
-        </div>
-
+        <div id="statusMessage" class="status-msg"></div>
     </div>
 
-    <div id="message"></div>
-
     <script>
-        function showMsg(text, isSuccess) {
-            const msgDiv = document.getElementById('message');
-            msgDiv.textContent = text;
-            msgDiv.style.display = 'block';
-            msgDiv.className = isSuccess ? 'msg-success' : 'msg-error';
-            setTimeout(() => { msgDiv.style.display = 'none'; }, 4000);
-        }
-
-        function loadCurrentData() {
-            fetch('/api/data')
-                .then(res => res.json())
-                .then(data => {
-                    if (data) {
-                        if(data.station) {
-                            document.getElementById('stationName').value = data.station.name || '';
-                            document.getElementById('branchName').value = data.station.branchName || '';
-                            document.getElementById('phoneNumber').value = data.station.phoneNumber || '';
-                            document.getElementById('logoUrl').value = data.station.logoUrl || '';
-                        }
-                       
-                        if(data.tanks) {
-                            const tbody = document.getElementById('tanksTableBody');
-                            tbody.innerHTML = '';
-                            data.tanks.forEach(tank => {
-                                const tr = document.createElement('tr');
-                                tr.innerHTML = `
-                                    <td><strong>Tank ${tank.tankNumber}</strong><input type="hidden" class="tank-num" value="${tank.tankNumber}"></td>
-                                    <td><input type="text" class="tank-fuel" value="${tank.fuelType || ''}" style="color:#ff9f43; font-weight:bold; text-align:center;" required></td>
-                                    <td><input type="number" class="tank-max" value="${tank.maxCapacity}" required></td>
-                                    <td><input type="text" class="tank-cm" value="${tank.currentCM}" required></td>
-                                    <td><input type="number" class="tank-liter" value="${tank.currentLiter}" required></td>
-                                `;
-                                tbody.appendChild(tr);
-                            });
-                        }
-                    }
-                }).catch(err => console.log(err));
-        }
-
-        loadCurrentData();
-
-        // --- ၁။ လက်မန်ဖြင့် ဝင်ပြင်ခြင်း (ဒေတာများ သေချာပေါက် ပို့ပေးမည့် စနစ်သစ်) ---
-        document.getElementById('manualTanksForm').addEventListener('submit', async (e) => {
+        document.getElementById('uploadForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            const password = document.getElementById('adminPassword').value;
-            if (!password) { return showMsg("ကျေးဇူးပြု၍ အပေါ်ဆုံးတွင် Admin Password ကို အရင်ရိုက်ထည့်ပေးပါဗျာ။", false); }
-
-            const rows = document.querySelectorAll('#tanksTableBody tr');
-            let updatedTanksList = [];
-
-            rows.forEach(row => {
-                const tankNumber = row.querySelector('.tank-num').value;
-                const fuelType = row.querySelector('.tank-fuel').value; // *** ဤနေရာတွင် ဆီအမျိုးအစားကို သေချာဖတ်ယူသွားပါပြီ ***
-                const maxCapacity = row.querySelector('.tank-max').value;
-                const currentCM = row.querySelector('.tank-cm').value;
-                const currentLiter = row.querySelector('.tank-liter').value;
-
-                updatedTanksList.push({
-                    tankNumber: Number(tankNumber),
-                    fuelType: String(fuelType).trim(),
-                    maxCapacity: Number(maxCapacity),
-                    currentCM: currentCM,
-                    currentLiter: Number(currentLiter)
-                });
-            });
-
-            try {
-                const response = await fetch('/api/admin/update-all-tanks', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password, tanksData: updatedTanksList })
-                });
-               
-                const result = await response.json();
-                if (result.success) {
-                    showMsg("တိုင်ကီ (၆) ခုလုံး၏ အချက်အလက်များနှင့် ဆီအမျိုးအစားများကို အောင်မြင်စွာ ပြင်ဆင်ပြီးပါပြီဗျာ။", true);
-                    loadCurrentData();
-                } else {
-                    showMsg(result.message || "ပြင်ဆင်မှု မအောင်မြင်ပါ။ Password မှားနေနိုင်ပါတယ်ဗျာ။", false);
-                }
-            } catch (error) {
-                showMsg("ဆာဗာနှင့် ချိတ်ဆက်မှု အမှားအယွင်းရှိနေပါသည်။", false);
-            }
-        });
-
-        // --- ၂။ Excel Bulk Upload Logic ---
-        document.getElementById('excelForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const password = document.getElementById('adminPassword').value;
+           
             const fileInput = document.getElementById('excelFile');
+            const statusDiv = document.getElementById('statusMessage');
+           
+            if (!fileInput.files[0]) {
+                statusDiv.className = "status-msg status-error";
+                statusDiv.innerText = "ကျေးဇူးပြု၍ ဖိုင်ရွေးချယ်ပေးပါဗျာ။";
+                return;
+            }
 
-            if (!password) { return showMsg("ကျေးဇူးပြု၍ Admin Password ကို အရင်ရိုက်ထည့်ပါဗျာ။", false); }
+            statusDiv.className = "status-msg";
+            statusDiv.style.color = "#94a3b8";
+            statusDiv.innerText = "ဖိုင်ကို ပို့ဆောင်နေပါသည်...";
 
             const formData = new FormData();
-            formData.append('password', password);
             formData.append('excelFile', fileInput.files[0]);
 
-            try {
-                const response = await fetch('/api/admin/upload-excel', { method: 'POST', body: formData });
-                const result = await response.json();
-                if (result.success) {
-                    showMsg(result.message, true);
-                    fileInput.value = '';
-                    setTimeout(loadCurrentData, 1000);
-                } else {
-                    showMsg(result.message, false);
-                }
-            } catch (error) {
-                showMsg("ချိတ်ဆက်မှု အမှားအယွင်းရှိနေပါသည်။", false);
-            }
-        });
-
-        // --- ၃။ ဆီဆိုင်အချက်အလက် ပြင်ဆင်ခြင်း Logic ---
-        document.getElementById('stationForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const password = document.getElementById('adminPassword').value;
-            const name = document.getElementById('stationName').value;
-            const branchName = document.getElementById('branchName').value;
-            const phoneNumber = document.getElementById('phoneNumber').value;
-            const logoUrl = document.getElementById('logoUrl').value;
-
-            if (!password) { return showMsg("ကျေးဇူးပြု၍ Admin Password ကို အရင်ရိုက်ထည့်ပါဗျာ။", false); }
-
-            try {
-                const response = await fetch('/api/admin/update-station', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password, name, branchName, phoneNumber, logoUrl })
-                });
-                const result = await response.json();
-                if (result.success) {
-                    showMsg(result.message, true);
-                    loadCurrentData();
-                } else {
-                    showMsg(result.message, false);
-                }
-            } catch (error) {
-                showMsg("ချိတ်ဆက်မှု အမှားအယွင်းရှိနေပါသည်။", false);
-            }
+            // Backend Server သို့ Excel ဖိုင်လှမ်းတင်ခြင်း (Endpoint: /api/upload)
+            fetch('/api/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => {
+                if (!res.ok) throw new Error('Server တုံ့ပြန်မှု မမှန်ကန်ပါ');
+                return res.json();
+            })
+            .then(data => {
+                statusDiv.className = "status-msg status-success";
+                statusDiv.innerText = "🎉 အောင်မြင်ပါသည်။ ဆီတိုင်ကီ ဒေတာများကို Real-time ပြောင်းလဲလိုက်ပါပြီဗျာ!";
+                fileInput.value = ''; // Clear Form
+            })
+            .catch(err => {
+                console.error("Upload error:", err);
+                statusDiv.className = "status-msg status-error";
+                statusDiv.innerText = "❌ ဒေတာတင်ခြင်း မအောင်မြင်ပါ။ Server Endpoint သို့မဟုတ် Excel Column များကို စစ်ဆေးပါဗျာ။";
+            });
         });
     </script>
 </body>
