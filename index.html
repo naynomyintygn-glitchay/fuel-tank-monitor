@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Htoo Fuel Station - Tank Monitoring</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Padauk:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Padauk:wght=400;700&display=swap" rel="stylesheet">
    
     <style>
         html, body {
             max-width: 100%;
-            overflow-x: hidden; /* ဖုန်းထဲတွင် ဘေးတိုက်လွတ်ထွက်ပြီး scroll ဖြစ်ခြင်းကို လုံးဝပိတ်ထားသည် */
+            overflow-x: hidden; /* ဖုန်းထဲတွင် ဘေးတိုက်လွတ်ထွက်ခြင်းကို လုံးဝပိတ်ထားသည် */
             margin: 0;
             padding: 0;
             box-sizing: border-box;
@@ -34,23 +33,72 @@
         </div>
     </div>
 
-    <div class="max-w-5xl mx-auto">
-        <h2 class="text-base md:text-lg font-bold text-gray-700 mb-4 px-1 flex items-center gap-2">
+    <div class="max-w-5xl mx-auto mb-5 flex justify-between items-center bg-white p-3 rounded-xl shadow-sm">
+        <h2 class="text-base md:text-lg font-bold text-gray-700 flex items-center gap-2">
             <span class="w-2.5 h-5 bg-orange-500 rounded-full inline-block"></span>
             ဆီတိုင်ကီများ၏ လက်ရှိအခြေအနေ
         </h2>
        
-        <div id="listContainer" class="w-full">
-            <div class="text-center text-gray-400 py-8 text-sm">အချက်အလက်များ ဆွဲယူနေပါသည်...</div>
+        <div class="flex bg-gray-100 p-1 rounded-lg">
+            <button id="btnGrid" onclick="switchView('grid')" class="px-3 py-1.5 rounded-md text-xs font-bold transition-all bg-white text-orange-600 shadow-sm">
+                📱 Grid View
+            </button>
+            <button id="btnList" onclick="switchView('list')" class="px-3 py-1.5 rounded-md text-xs font-bold transition-all text-gray-500 hover:text-gray-700">
+                📄 List View
+            </button>
         </div>
+    </div>
+
+    <div class="max-w-5xl mx-auto">
+       
+        <div id="gridViewContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
+            </div>
+
+        <div id="listViewContainer" class="hidden w-full">
+            </div>
+
+        <div id="loadingText" class="text-center text-gray-400 py-8 text-sm">အချက်အလက်များ ဆွဲယူနေပါသည်...</div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
+        let currentView = 'grid'; // Default အမြင်
+        let globalData = null;    // လက်ရှိ data ကို သိမ်းဆည်းထားရန် Memory
 
-        // UI ကို အမှားအယွင်းမရှိ Responsive ဖြစ်အောင် ပြင်ဆင်ပြသပေးမည့် လုပ်ဆောင်ချက်
-        function updateUI(data) {
+        // UI View ပုံစံ အကူးအပြောင်း လုပ်ဆောင်ပေးသည့် Function
+        function switchView(view) {
+            currentView = view;
+            const btnGrid = document.getElementById('btnGrid');
+            const btnList = document.getElementById('btnList');
+            const gridBox = document.getElementById('gridViewContainer');
+            const listBox = document.getElementById('listViewContainer');
+
+            if(view === 'grid') {
+                // Button Style ပြောင်းလဲခြင်း
+                btnGrid.className = "px-3 py-1.5 rounded-md text-xs font-bold transition-all bg-white text-orange-600 shadow-sm";
+                btnList.className = "px-3 py-1.5 rounded-md text-xs font-bold transition-all text-gray-500 hover:text-gray-700";
+                // Layout ပြောင်းလဲခြင်း
+                gridBox.classList.remove('hidden');
+                listBox.classList.add('hidden');
+            } else {
+                // Button Style ပြောင်းလဲခြင်း
+                btnGrid.className = "px-3 py-1.5 rounded-md text-xs font-bold transition-all text-gray-500 hover:text-gray-700";
+                btnList.className = "px-3 py-1.5 rounded-md text-xs font-bold transition-all bg-white text-orange-600 shadow-sm";
+                // Layout ပြောင်းလဲခြင်း
+                gridBox.classList.add('hidden');
+                listBox.classList.remove('hidden');
+            }
+           
+            // ဒေတာရှိပါက UI ပြန်ဆွဲပေးပါ
+            if(globalData) renderUI(globalData);
+        }
+
+        // UI ကို အမှားအယွင်းမရှိ ပြင်ဆင်ပြသပေးမည့် ပင်မလုပ်ဆောင်ချက်
+        function renderUI(data) {
+            globalData = data; // မှတ်ဉာဏ်ထဲ သိမ်းဆည်းသည်
+            document.getElementById('loadingText').classList.add('hidden');
+
             // ဆိုင်အချက်အလက်များ အပ်ဒိတ်လုပ်ခြင်း
             if(data.station) {
                 document.getElementById('stationName').innerText = data.station.name;
@@ -59,12 +107,14 @@
                 if(data.station.logoUrl) document.getElementById('stationLogo').src = data.station.logoUrl;
             }
 
-            const listContainer = document.getElementById('listContainer');
-            listContainer.innerHTML = ''; // အဟောင်းများကို ရှင်းထုတ်သည်
+            const gridContainer = document.getElementById('gridViewContainer');
+            const listContainer = document.getElementById('listViewContainer');
+           
+            gridContainer.innerHTML = '';
+            listContainer.innerHTML = '';
 
-            // တိုင်ကီတစ်ခုချင်းစီကို Loop ပတ်ပြီး UI ဆောက်ခြင်း
+            // တိုင်ကီတစ်ခုချင်းစီကို Loop ပတ်ပြီး UI ပုံစံနှစ်မျိုးလုံး တစ်ခါတည်းဆောက်ခြင်း
             data.tanks.forEach(tank => {
-                // ဆီပမာဏ ရာခိုင်နှုန်းတွက်ချက်ခြင်း
                 const percentage = Math.min(Math.round((tank.currentLiter / tank.maxCapacity) * 100), 100) || 0;
                
                 // ဆီအမျိုးအစားအလိုက် ခွဲခြားပြသမည့် အရောင်များ
@@ -73,12 +123,45 @@
                 if(tank.fuelType.toLowerCase().includes("95")) fuelColor = "bg-red-600";
                 if(tank.fuelType.toLowerCase().includes("diesel") || tank.fuelType.toLowerCase().includes("hsd")) fuelColor = "bg-amber-600";
 
-                // Row ကတ်ပြားတစ်ခုချင်းစီ ဖန်တီးခြင်း
-                const row = document.createElement('div');
-                // ဖုန်းထဲတွင် အပေါ်အောက်ပုံစံပြောင်းပြီး ကွန်ပျူတာထဲတွင် ဘေးတိုက်ပြရန် flex-col md:flex-row ကို သုံးထားပါသည်
-                row.className = "bg-white p-3 md:p-4 rounded-xl shadow-sm mb-3 border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-3 w-full box-sizing-border";
-               
-                row.innerHTML = `
+                // --------------------------------------------------
+                // 🎴 (၁) GRID VIEW DESIGN တည်ဆောက်ပုံ (ဖုန်းဗားရှင်းအတွက် အပြည့်)
+                // --------------------------------------------------
+                const gridCard = document.createElement('div');
+                gridCard.className = "bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 flex flex-col justify-between transition-all hover:shadow-md";
+                gridCard.innerHTML = `
+                    <div class="p-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
+                        <span class="text-xs font-bold bg-gray-800 text-white px-2.5 py-1 rounded-md">Tank ${tank.tankNumber}</span>
+                        <span class="text-xs font-bold text-white px-2.5 py-1 rounded-md ${fuelColor}">${tank.fuelType}</span>
+                    </div>
+                    <div class="p-4">
+                        <div class="flex justify-between text-[11px] text-gray-400 mb-1.5">
+                            <span>ဆီပမာဏ (${percentage}%)</span>
+                            <span>Max: ${tank.maxCapacity.toLocaleString()} L</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden mb-4">
+                            <div class="${fuelColor} h-2 rounded-full transition-all duration-500" style="width: ${percentage}%"></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="bg-blue-50 p-2 rounded-xl text-center border border-blue-100">
+                                <span class="block text-[10px] text-blue-500 font-bold">📏 လက်ရှိ CM</span>
+                                <span class="text-sm font-black text-blue-900">${tank.currentCM}</span>
+                            </div>
+                            <div class="bg-emerald-50 p-2 rounded-xl text-center border border-emerald-100">
+                                <span class="block text-[10px] text-emerald-500 font-bold">🛢️ လက်ရှိ လီတာ</span>
+                                <span class="text-sm font-black text-emerald-900">${tank.currentLiter.toLocaleString()}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                gridContainer.appendChild(gridCard);
+
+
+                // --------------------------------------------------
+                // 📄 (၂) LIST VIEW DESIGN တည်ဆောက်ပုံ (အစ်ကိုကြီးတို့ မူရင်းအတိုင်း ဖုန်းအတွက် Responsive)
+                // --------------------------------------------------
+                const listRow = document.createElement('div');
+                listRow.className = "bg-white p-3 md:p-4 rounded-xl shadow-sm mb-3 border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-3 w-full box-sizing-border";
+                listRow.innerHTML = `
                     <div class="flex items-center justify-between md:justify-start gap-3 border-b md:border-b-0 pb-2 md:pb-0 border-gray-100 shrink-0">
                         <div class="flex items-center gap-2">
                             <span class="text-xs font-bold bg-gray-800 text-white px-2.5 py-1.5 rounded-lg">Tank ${tank.tankNumber}</span>
@@ -94,35 +177,30 @@
                     </div>
 
                     <div class="flex items-center justify-between md:justify-end gap-2.5 w-full md:w-auto shrink-0">
-                       
                         <div class="bg-blue-50 text-blue-900 px-3 py-2 rounded-xl text-xs md:text-sm flex items-center gap-1.5 font-bold border border-blue-100 flex-1 md:flex-none justify-center min-w-[85px]">
-                            <span>📏</span>
-                            <span>${tank.currentCM} CM</span>
+                            <span>📏</span> <span>${tank.currentCM} CM</span>
                         </div>
-                       
                         <div class="bg-emerald-50 text-emerald-900 px-3 py-2 rounded-xl text-xs md:text-sm flex items-center gap-1.5 font-bold border border-emerald-100 flex-1 md:flex-none justify-center min-w-[135px]">
-                            <span>🛢️</span>
-                            <span>${tank.currentLiter.toLocaleString()} / ${tank.maxCapacity.toLocaleString()} L</span>
+                            <span>🛢️</span> <span>${tank.currentLiter.toLocaleString()} / ${tank.maxCapacity.toLocaleString()} L</span>
                         </div>
-                       
                         <div class="hidden md:block text-right font-black text-gray-600 text-sm min-w-[45px]">
                             <span>${percentage}%</span>
                         </div>
                     </div>
                 `;
-                listContainer.appendChild(row);
+                listContainer.appendChild(listRow);
             });
         }
 
-        // ပထမဆုံးအကြိမ် ဝင်လာလျှင် API မှ ဒေတာလှမ်းဆွဲခြင်း
+        // ပထမဆုံးအကြိမ် ဒေတာလှမ်းဆွဲခြင်း
         fetch('/api/data')
             .then(res => res.json())
-            .then(data => updateUI(data))
+            .then(data => renderUI(data))
             .catch(err => console.error("Error loading data:", err));
 
-        // Real-time ဒေတာ ပြောင်းလဲမှုရှိလျှင် Socket မှတစ်ဆင့် UI ကို ချက်ချင်းလဲလှယ်ပေးခြင်း
+        // Real-time Socket Update
         socket.on('dataUpdate', (data) => {
-            updateUI(data);
+            renderUI(data);
         });
     </script>
 </body>
