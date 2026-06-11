@@ -5,7 +5,7 @@ const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
 const fs = require('fs');
-const mongoose = require('mongoose');
+const { createClient } = require('@libsql/client');
 
 const app = express();
 const server = http.createServer(app);
@@ -18,7 +18,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const ADMIN_PASSWORD = "htoo2024";
 const PORT = process.env.PORT || 3000;
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://naynomnytygn_db_user:jzEkxwxwsPlR49BKv@htoofuelmonitor.hyczvck.mongodb.net/fuelMonitor?retryWrites=true&w=majority";
+
+const db = createClient({
+  url: "libsql://fuelmonitor-naynomyintygn-glitchay.aws-ap-northeast-1.turso.io",
+  authToken: "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3ODExODc4MjQsImlkIjoiMDE5ZWI3MGItZGEwMS03NjI0LWE5OTgtZWQ4ZDc2NDk5YjliIiwicmlkIjoiZmQxMDhjYjItMGI1ZC00N2IxLTg1MjUtODVkOGEyMjFkMzg3In0.YdLgQQnyL9qx6h1hxUOrU8ZB1pOU9CpP2PX473ssUtLScZo7vLI8PX1EAw_Yc4fompj6eIIMpeIdWXoXv0nAAA"
+});
 
 const defaultStationData = {
   name: "Htoo Fuel Station",
@@ -36,30 +40,10 @@ const defaultTanksData = [
   { tankNumber: 6, fuelType: "92 RON", currentCM: "142", currentLiter: "11000", maxCapacity: "15000" }
 ];
 
-const tankSchema = new mongoose.Schema({
-  tankNumber: { type: Number, required: true, unique: true },
-  fuelType: { type: String, default: "" },
-  currentCM: { type: String, default: "0" },
-  currentLiter: { type: String, default: "0" },
-  maxCapacity: { type: String, default: "0" }
-});
-
-const stationSchema = new mongoose.Schema({
-  _id: { type: String, default: "station_settings" },
-  name: { type: String, default: defaultStationData.name },
-  branchName: { type: String, default: defaultStationData.branchName },
-  phoneNumber: { type: String, default: defaultStationData.phoneNumber },
-  logoUrl: { type: String, default: defaultStationData.logoUrl },
-  lastUpdated: { type: String, default: "မရှိသေးပါ" }
-});
-
-const Tank = mongoose.model('Tank', tankSchema);
-const Station = mongoose.model('Station', stationSchema);
-
 let systemDatabase = {
   lastUpdated: "မရှိသေးပါ",
-  station: defaultStationData,
-  tanks: defaultTanksData
+  station: { ...defaultStationData },
+  tanks: [...defaultTanksData]
 };
 
 function getNowString() {
@@ -67,79 +51,133 @@ function getNowString() {
   return now.toLocaleDateString('my-MM') + " - " + now.toLocaleTimeString('my-MM');
 }
 
-async function seedDatabaseIfNeeded() {
-  let stationDoc = await Station.findById("station_settings");
-  if (!stationDoc) {
-    await Station.create({
-      _id: "station_settings",
-      ...defaultStationData,
-      lastUpdated: "မရှိသေးပါ"
+async function initDatabase() {
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS station (
+      id TEXT PRIMARY KEY,
+      name TEXT,
+      branchName TEXT,
+      phoneNumber TEXT,
+      logoUrl TEXT,
+      lastUpdated TEXT
+    )
+  `);
+
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS tanks (
+      tankNumber INTEGER PRIMARY KEY,
+      fuelType TEXT,
+      currentCM TEXT,
+      currentLiter TEXT,
+      maxCapacity TEXT
+    )
+  `);
+
+  const stationResult = await db.execute("SELECT * FROM station WHERE id = 'station_settings'");
+  if (stationResult.rows.length === 0) {
+    await db.execute({
+      sql: "INSERT INTO station (id, name, branchName, phoneNumber, logoUrl, lastUpdated) VALUES (?, ?, ?, ?, ?, ?)",
+      args: [
+        "station_settings",
+        defaultStationData.name,
+        defaultStationData.branchName,
+        defaultStationData.phoneNumber,
+        defaultStationData.logoUrl,
+        "မရှိသေးပါ"
+      ]
     });
   }
-  const tankCount = await Tank.countDocuments();
-  if (tankCount === 0) {
-    await Tank.insertMany(defaultTanksData);
+
+  const tanksResult = await db.execute("SELECT COUNT(*) as count FROM tanks");
+  if (tanksResult.rows[0].count === 0) {
+    for (const tank of defaultTanksData) {
+      await db.execute({
+        sql: "INSERT INTO tanks (tankNumber, fuelType, currentCM, currentLiter, maxCapacity) VALUES (?, ?, ?, ?, ?)",
+        args: [tank.tankNumber, tank.fuelType, tank.currentCM, tank.currentLiter, tank.maxCapacity]
+      });
+    }
   } else {
     for (const tank of defaultTanksData) {
-      const exists = await Tank.findOne({ tankNumber: tank.tankNumber });
-      if (!exists) await Tank.create(tank);
+      const exists = await db.execute({
+        sql: "SELECT tankNumber FROM tanks WHERE tankNumber = ?",
+        args: [tank.tankNumber]
+      });
+      if (exists.rows.length === 0) {
+        await db.execute({
+          sql: "INSERT INTO tanks (tankNumber, fuelType, currentCM, currentLiter, maxCapacity) VALUES (?, ?, ?, ?, ?)",
+          args: [tank.tankNumber, tank.fuelType, tank.currentCM, tank.currentLiter, tank.maxCapacity]
+        });
+      }
     }
   }
 }
 
-async function loadDatabaseFromMongo() {
-  const stationDoc = await Station.findById("station_settings");
-  const tanksDocs = await Tank.find({}).sort({ tankNumber: 1 });
+async function loadDatabaseFromTurso() {
+  const stationResult = await db.execute("SELECT * FROM station WHERE id = 'station_settings'");
+  const tanksResult = await db.execute("SELECT * FROM tanks ORDER BY tankNumber ASC");
 
-  systemDatabase.station = stationDoc ? {
-    name: stationDoc.name,
-    branchName: stationDoc.branchName,
-    phoneNumber: stationDoc.phoneNumber,
-    logoUrl: stationDoc.logoUrl
-  } : defaultStationData;
+  if (stationResult.rows.length > 0) {
+    const s = stationResult.rows[0];
+    systemDatabase.station = {
+      name: s.name,
+      branchName: s.branchName,
+      phoneNumber: s.phoneNumber,
+      logoUrl: s.logoUrl
+    };
+    systemDatabase.lastUpdated = s.lastUpdated || "မရှိသေးပါ";
+  }
 
-  systemDatabase.tanks = tanksDocs.length
-    ? tanksDocs.map(t => ({
-        tankNumber: t.tankNumber,
-        fuelType: t.fuelType,
-        currentCM: t.currentCM,
-        currentLiter: t.currentLiter,
-        maxCapacity: t.maxCapacity
-      }))
-    : defaultTanksData;
-
-  systemDatabase.lastUpdated = stationDoc?.lastUpdated || "မရှိသေးပါ";
+  if (tanksResult.rows.length > 0) {
+    systemDatabase.tanks = tanksResult.rows.map(t => ({
+      tankNumber: t.tankNumber,
+      fuelType: t.fuelType,
+      currentCM: t.currentCM,
+      currentLiter: t.currentLiter,
+      maxCapacity: t.maxCapacity
+    }));
+  }
 }
 
 async function updateAndEmit() {
-  await Station.findByIdAndUpdate(
-    "station_settings",
-    {
-      _id: "station_settings",
-      name: systemDatabase.station.name,
-      branchName: systemDatabase.station.branchName,
-      phoneNumber: systemDatabase.station.phoneNumber,
-      logoUrl: systemDatabase.station.logoUrl,
-      lastUpdated: systemDatabase.lastUpdated
-    },
-    { upsert: true, new: true }
-  );
+  await db.execute({
+    sql: `INSERT INTO station (id, name, branchName, phoneNumber, logoUrl, lastUpdated)
+          VALUES (?, ?, ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+          name=excluded.name,
+          branchName=excluded.branchName,
+          phoneNumber=excluded.phoneNumber,
+          logoUrl=excluded.logoUrl,
+          lastUpdated=excluded.lastUpdated`,
+    args: [
+      "station_settings",
+      systemDatabase.station.name,
+      systemDatabase.station.branchName,
+      systemDatabase.station.phoneNumber,
+      systemDatabase.station.logoUrl,
+      systemDatabase.lastUpdated
+    ]
+  });
 
   for (const tank of systemDatabase.tanks) {
-    await Tank.findOneAndUpdate(
-      { tankNumber: Number(tank.tankNumber) },
-      {
-        tankNumber: Number(tank.tankNumber),
-        fuelType: String(tank.fuelType || ""),
-        currentCM: String(tank.currentCM || "0"),
-        currentLiter: String(tank.currentLiter || "0"),
-        maxCapacity: String(tank.maxCapacity || "0")
-      },
-      { upsert: true, new: true }
-    );
+    await db.execute({
+      sql: `INSERT INTO tanks (tankNumber, fuelType, currentCM, currentLiter, maxCapacity)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(tankNumber) DO UPDATE SET
+            fuelType=excluded.fuelType,
+            currentCM=excluded.currentCM,
+            currentLiter=excluded.currentLiter,
+            maxCapacity=excluded.maxCapacity`,
+      args: [
+        Number(tank.tankNumber),
+        String(tank.fuelType || ""),
+        String(tank.currentCM || "0"),
+        String(tank.currentLiter || "0"),
+        String(tank.maxCapacity || "0")
+      ]
+    });
   }
 
-  await loadDatabaseFromMongo();
+  await loadDatabaseFromTurso();
   io.emit("dataUpdate", systemDatabase);
 }
 
@@ -189,7 +227,7 @@ function parseSheetData(matrixData) {
       if (row.length <= literCol) continue;
       const cmVal = autoCorrectValue(row[cmCol]);
       const literVal = autoCorrectValue(row[literCol]);
-      if (cmVal !== null && cmVal > 0 && cmVal < 300 && literVal !== null && literVal >= 0 && literVal <= 50000) {
+      if (cmVal && cmVal > 0 && cmVal < 300 && literVal !== null && literVal >= 0 && literVal <= 50000) {
         lastValidCM = String(cmVal.toFixed(1));
         lastValidLiter = String(Math.round(literVal));
         break;
@@ -207,7 +245,7 @@ app.post('/api/verify-password', (req, res) => {
 
 app.get('/api/data', async (req, res) => {
   try {
-    await loadDatabaseFromMongo();
+    await loadDatabaseFromTurso();
     res.json(systemDatabase);
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -299,14 +337,20 @@ io.on('connection', socket => {
   socket.emit('dataUpdate', systemDatabase);
 });
 
-mongoose.connect(MONGODB_URI)
-  .then(async () => {
-    console.log("MongoDB connected");
-    await seedDatabaseIfNeeded();
-    await loadDatabaseFromMongo();
-    server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-  })
-  .catch(err => {
-    console.error("MongoDB connection error:", err);
+async function startServer() {
+  try {
+    console.log("Connecting to Turso database...");
+    await initDatabase();
+    await loadDatabaseFromTurso();
+    console.log("Turso database connected and loaded.");
+
+    server.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  } catch (err) {
+    console.error("Failed to start server:", err);
     process.exit(1);
-  });
+  }
+}
+
+startServer();
