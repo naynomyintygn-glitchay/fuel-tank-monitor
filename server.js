@@ -18,8 +18,11 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 const ADMIN_PASSWORD = "htoo2024";
+
+// IMPORTANT: Ensure MONGODB_URI is set as an Environment Variable in Render Dashboard!
 const MONGODB_URI = process.env.MONGODB_URI;
 
+// Default data (used only if database is completely empty upon first connection)
 const defaultStationData = {
     name: "Htoo Fuel Station",
     branchName: "ပြင်ဦးလွင်",
@@ -36,6 +39,7 @@ const defaultTanksData = [
     { tankNumber: 6, fuelType: "92 RON", currentCM: "142", currentLiter: "11000", maxCapacity: "15000" }
 ];
 
+// Mongoose Schemas (should be correct from previous versions)
 const tankSchema = new mongoose.Schema({
     tankNumber: { type: Number, required: true, unique: true },
     fuelType: String,
@@ -82,44 +86,59 @@ async function loadDatabaseFromMongo() {
             const newTanks = await Tank.insertMany(defaultTanksData);
             systemDatabase.tanks = newTanks.map(doc => doc.toObject());
         } else {
-            systemDatabase.tanks = tanksDocs.map(doc => doc.toObject());
+            
+            // Check for any missing tanks from defaultTanksData and add them if necessary
+            const existingTankNumbers = new Set(tanksDocs.map(t => t.tankNumber));
+            const tanksToAdd = defaultTanksData.filter(dTank => !existingTankNumbers.has(dTank.tankNumber));
+            if (tanksToAdd.length > 0) {
+              await Tank.insertMany(tanksToAdd);
+            }
+            // Re-fetch all tanks to ensure systemDatabase holds all tanks including newly added defaults
+            systemDatabase.tanks = (await Tank.find({}).sort({ tankNumber: 1 })).map(doc => doc.toObject());
         }
 
         systemDatabase.lastUpdated = systemDatabase.station.lastUpdated || "မရှိသေးပါ";
     } catch (err) {
-        console.error('Load MongoDB error:', err);
+        console.error('Load MongoDB error in loadDatabaseFromMongo:', err);
+        // It's crucial to handle this. Maybe default to in-memory data if DB load fails completely.
+        // For now, it will use the initialized systemDatabase.
     }
 }
 
 async function updateAndEmit() {
-    let stationDoc = await Station.findById('station_settings');
+    try {
+        let stationDoc = await Station.findById('station_settings');
 
-    if (!stationDoc) {
-        stationDoc = new Station({
-            _id: 'station_settings',
-            ...systemDatabase.station,
-            lastUpdated: systemDatabase.lastUpdated
-        });
-    } else {
-        stationDoc.name = systemDatabase.station.name;
-        stationDoc.branchName = systemDatabase.station.branchName;
-        stationDoc.phoneNumber = systemDatabase.station.phoneNumber;
-        stationDoc.logoUrl = systemDatabase.station.logoUrl;
-        stationDoc.lastUpdated = systemDatabase.lastUpdated;
+        if (!stationDoc) {
+            stationDoc = new Station({
+                _id: 'station_settings',
+                ...systemDatabase.station,
+                lastUpdated: systemDatabase.lastUpdated
+            });
+        } else {
+            stationDoc.name = systemDatabase.station.name;
+            stationDoc.branchName = systemDatabase.station.branchName;
+            stationDoc.phoneNumber = systemDatabase.station.phoneNumber;
+            stationDoc.logoUrl = systemDatabase.station.logoUrl;
+            stationDoc.lastUpdated = systemDatabase.lastUpdated;
+        }
+        await stationDoc.save();
+
+        for (const tank of systemDatabase.tanks) {
+            await Tank.updateOne(
+                { tankNumber: tank.tankNumber },
+                { $set: tank },
+                { upsert: true } // Create document if it doesn't exist
+            );
+        }
+
+        // Reload data from Mongo to ensure systemDatabase is always fresh from DB before emitting
+        await loadDatabaseFromMongo();
+        io.emit('dataUpdate', systemDatabase);
+    } catch (err) {
+        console.error('Update and emit error:', err);
+        throw err; // Re-throw to propagate potential errors to API handlers
     }
-
-    await stationDoc.save();
-
-    for (const tank of systemDatabase.tanks) {
-        await Tank.updateOne(
-            { tankNumber: tank.tankNumber },
-            { $set: tank },
-            { upsert: true }
-        );
-    }
-
-    await loadDatabaseFromMongo();
-    io.emit('dataUpdate', systemDatabase);
 }
 
 function autoCorrectValue(val) {
@@ -127,24 +146,37 @@ function autoCorrectValue(val) {
 
     let str = String(val).trim();
 
+    // Specific logic for Excel date serials or time-like values
     if (str.includes('1900-') || (str.includes('T') && str.includes('Z'))) {
-        return null;
+         return null; // Ignore actual date/time strings in CM/Liter columns
+    }
+    
+    // Attempt to handle time-like values that look like floats (e.g., 5.02)
+    const timeAsFloatMatch = str.match(/^(\d{1,2})\.(\d{1,2})$/); // e.g., 5.02, 10.30
+    if (timeAsFloatMatch) {
+        const hour = parseInt(timeAsFloatMatch[1]);
+        const minute = parseInt(timeAsFloatMatch[2]);
+        if (hour < 250 && minute < 60) { // Reasonable CM/Liter ranges for parts
+            return parseFloat(str); // Treat as a valid float
+        }
     }
 
-    str = str.replace(/\.{2,}/g, '.');
-    str = str.replace(/,/g, '');
-    str = str.replace(/[^0-9.-]/g, '');
 
-    const parts = str.split('.');
-    if (parts.length > 2) {
-        str = parts[0] + '.' + parts.slice(1).join('');
+    str = str.replace(/\.{2,}/g, '.'); // Replace multiple dots with a single dot
+    str = str.replace(/,/g, ''); // Remove thousands separators (commas)
+    str = str.replace(/[^0-9.-]/g, ''); // Remove any non-numeric characters except dot and minus
+
+    const parts = str.split('.'); // Split by dot
+    if (parts.length > 2) { // If there are more than one dot (e.g., 10.0.5)
+        str = parts[0] + '.' + parts.slice(1).join(''); // Keep first part, join rest after first dot
     }
 
-    if (str === '' || str === '.' || str === '-') return null;
+    if (str === '' || str === '.' || str === '-') return null; // Handle cases where cleanup leaves only symbols
 
     const num = parseFloat(str);
     return isNaN(num) ? null : num;
 }
+
 
 function parseSheetData(matrixData) {
     let lastValidCM = "0";
@@ -235,13 +267,21 @@ app.post('/api/manual-save', async (req, res) => {
 
         if (station) {
             systemDatabase.station = {
-                ...systemDatabase.station,
+                ...systemDatabase.station, // Keep existing station properties, only update provided ones
                 ...station
             };
         }
 
         if (tanks && Array.isArray(tanks)) {
-            systemDatabase.tanks = tanks;
+            // Ensure tank data from frontend is clean and valid before assigning
+            const cleanedTanks = tanks.map(tank => ({
+                tankNumber: Number(tank.tankNumber),
+                fuelType: String(tank.fuelType),
+                currentCM: String(tank.currentCM),
+                currentLiter: String(tank.currentLiter),
+                maxCapacity: String(tank.maxCapacity)
+            }));
+            systemDatabase.tanks = cleanedTanks;
         }
 
         await updateAndEmit();
@@ -249,7 +289,7 @@ app.post('/api/manual-save', async (req, res) => {
         res.json({ success: true, data: systemDatabase });
     } catch (err) {
         console.error('manual-save error:', err);
-        res.status(500).json({ success: false, message: err.message });
+        res.status(500).json({ success: false, message: err.message || "Unknown error during manual save." });
     }
 });
 
@@ -268,6 +308,9 @@ app.post('/api/excel-upload', upload.single('excelFile'), async (req, res) => {
         const workbook = xlsx.readFile(req.file.path);
         const sheetNames = workbook.SheetNames;
         let tempTanks = [...systemDatabase.tanks];
+        let changesMade = false;
+        let updateLog = [];
+
 
         const sheetsToProcess = [];
 
@@ -279,12 +322,18 @@ app.post('/api/excel-upload', upload.single('excelFile'), async (req, res) => {
                 });
             }
         } else {
+            // Process up to 6 sheets for automatic updates
             for (let i = 0; i < Math.min(sheetNames.length, 6); i++) {
                 sheetsToProcess.push({
                     sheet: workbook.Sheets[sheetNames[i]],
-                    targetTank: i + 1
+                    targetTank: i + 1 // Default target tank if not detected in sheet
                 });
             }
+        }
+        
+        if (sheetsToProcess.length === 0) {
+            fs.unlink(req.file.path, () => {}); // Clean up temp file
+            return res.json({ success: true, message: "No data found or processed from Excel file.", log: [] });
         }
 
         for (const { sheet, targetTank } of sheetsToProcess) {
@@ -295,45 +344,62 @@ app.post('/api/excel-upload', upload.single('excelFile'), async (req, res) => {
             const tankIndex = tempTanks.findIndex(t => Number(t.tankNumber) === Number(finalTankNum));
 
             if (tankIndex !== -1) {
-                if (parsed.cm !== "0") tempTanks[tankIndex].currentCM = parsed.cm;
-                if (parsed.liter !== "0") tempTanks[tankIndex].currentLiter = parsed.liter;
-                if (parsed.capacity !== "30500") tempTanks[tankIndex].maxCapacity = parsed.capacity;
-                if (parsed.fuelType !== "Unknown") tempTanks[tankIndex].fuelType = parsed.fuelType;
+                if (parsed.cm !== "0" && tempTanks[tankIndex].currentCM !== parsed.cm) {
+                    tempTanks[tankIndex].currentCM = parsed.cm; changesMade = true;
+                    updateLog.push(`Tank ${finalTankNum}: CM updated to ${parsed.cm}`);
+                }
+                if (parsed.liter !== "0" && tempTanks[tankIndex].currentLiter !== parsed.liter) {
+                    tempTanks[tankIndex].currentLiter = parsed.liter; changesMade = true;
+                    updateLog.push(`Tank ${finalTankNum}: Liter updated to ${parsed.liter}`);
+                }
+                if (parsed.capacity !== "30500" && tempTanks[tankIndex].maxCapacity !== parsed.capacity) {
+                    tempTanks[tankIndex].maxCapacity = parsed.capacity; changesMade = true;
+                    updateLog.push(`Tank ${finalTankNum}: Max Capacity updated to ${parsed.capacity}`);
+                }
+                if (parsed.fuelType !== "Unknown" && tempTanks[tankIndex].fuelType !== parsed.fuelType) {
+                    tempTanks[tankIndex].fuelType = parsed.fuelType; changesMade = true;
+                    updateLog.push(`Tank ${finalTankNum}: Fuel Type updated to ${parsed.fuelType}`);
+                }
+            } else {
+                updateLog.push(`Error: Tank ${finalTankNum} not found in system to update.`);
             }
         }
 
-        systemDatabase.tanks = tempTanks;
+        if (changesMade) {
+            systemDatabase.tanks = tempTanks; // Apply all changes to the main systemDatabase
+            const now = new Date();
+            systemDatabase.lastUpdated = now.toLocaleDateString('my-MM') + " - " + now.toLocaleTimeString('my-MM');
+            await updateAndEmit(); // Persist changes to DB and emit
+            res.json({ success: true, data: systemDatabase, log: updateLog });
+        } else {
+            res.json({ success: true, data: systemDatabase, log: ["No significant changes found in Excel data."] });
+        }
 
-        const now = new Date();
-        systemDatabase.lastUpdated = now.toLocaleDateString('my-MM') + " - " + now.toLocaleTimeString('my-MM');
-
-        await updateAndEmit();
-
-        fs.unlink(req.file.path, () => {});
-        res.json({ success: true, data: systemDatabase });
+        fs.unlink(req.file.path, () => {}); // Clean up temp file
     } catch (err) {
         console.error('excel-upload error:', err);
         if (req.file && req.file.path) {
             fs.unlink(req.file.path, () => {});
         }
-        res.status(500).json({ success: false, message: err.message });
+        res.status(500).json({ success: false, message: err.message || "Unknown error during Excel upload." });
     }
 });
 
-io.on('connection', (socket) => {
-    socket.emit('dataUpdate', systemDatabase);
-});
 
+// Mongoose Connect and Server Start (moved here to allow async/await for initial load)
 mongoose.connect(MONGODB_URI)
     .then(async () => {
-        console.log('MongoDB connected');
-        await loadDatabaseFromMongo();
+        console.log('MongoDB Connected successfully');
+        await loadDatabaseFromMongo(); // Load initial data from DB
 
         const PORT = process.env.PORT || 3000;
-        server.listen(PORT, () => {
-            console.log(`Server running on port ${PORT}`);
-        });
+        server.listen(PORT, () => console.log(`Htoo ATG Monitor running on port ${PORT}`));
     })
     .catch(err => {
-        console.error('MongoDB connection failed:', err);
+        console.error('MongoDB connection error:', err);
+        // If DB connection fails, ensure server still starts with default in-memory data
+        // Or, exit if DB connection is truly critical. For now, we exit.
+        process.exit(1); 
     });
+
+
