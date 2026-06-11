@@ -8,7 +8,6 @@
     <script src="/socket.io/socket.io.js"></script>
     <style>
         :root {
-            /* Dark Mode (Default) */
             --bg-primary: #0f172a;
             --bg-secondary: #1e293b;
             --bg-card: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
@@ -17,404 +16,469 @@
             --text-muted: #64748b;
             --border-color: #334155;
             --accent: #f97316;
-            --accent-hover: #ea580c;
             --shadow: rgba(0,0,0,0.3);
             --cylinder-bg: #0a0f1a;
             --cylinder-border: #334155;
         }
-        
+
         [data-theme="light"] {
             --bg-primary: #f1f5f9;
             --bg-secondary: #ffffff;
-            --bg-card: linear-gradient(145deg, #ffffff 0%, #f1f5f9 100%);
-            --text-primary: #1e293b;
+            --bg-card: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+            --text-primary: #0f172a;
             --text-secondary: #475569;
             --text-muted: #64748b;
-            --border-color: #e2e8f0;
+            --border-color: #dbe2ea;
             --accent: #ea580c;
-            --accent-hover: #c2410c;
-            --shadow: rgba(0,0,0,0.1);
+            --shadow: rgba(15,23,42,0.08);
             --cylinder-bg: #e2e8f0;
             --cylinder-border: #cbd5e1;
         }
-        
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        body { 
-            font-family: 'Padauk', sans-serif; 
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Padauk', sans-serif;
             background: var(--bg-primary);
-            color: var(--text-primary); 
+            color: var(--text-primary);
             min-height: 100vh;
             padding: 20px;
-            transition: all 0.3s ease;
+            transition: 0.3s ease;
         }
-        
-        .container { max-width: 1400px; margin: 0 auto; }
-        
-        /* Header */
-        .header { 
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
             background: var(--bg-card);
-            padding: 20px 25px; 
-            border-radius: 20px; 
+            padding: 20px 25px;
+            border-radius: 20px;
             border-left: 6px solid var(--accent);
             margin-bottom: 25px;
-            display: flex; 
-            justify-content: space-between; 
+            display: flex;
+            justify-content: space-between;
             align-items: center;
-            box-shadow: 0 10px 40px var(--shadow);
+            box-shadow: 0 10px 30px var(--shadow);
             border: 1px solid var(--border-color);
+            gap: 15px;
             flex-wrap: wrap;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
             gap: 15px;
         }
-        
-        .header-left { display: flex; align-items: center; gap: 15px; }
-        .header-logo { 
-            width: 60px; height: 60px; 
-            border-radius: 12px; 
-            object-fit: cover; 
-            border: 2px solid var(--accent); 
+
+        .header-logo {
+            width: 60px;
+            height: 60px;
+            border-radius: 14px;
+            object-fit: cover;
+            border: 2px solid var(--accent);
         }
-        .header h1 { font-size: 24px; color: var(--accent); }
-        .header .branch { color: var(--text-secondary); font-size: 13px; margin-top: 3px; }
-        .header .phone { color: var(--text-muted); font-size: 12px; }
-        
-        .header-right { text-align: right; }
-        .live-badge { 
-            background: #22c55e; 
-            color: white; 
-            padding: 5px 12px; 
-            border-radius: 20px; 
+
+        .header h1 {
+            font-size: 24px;
+            color: var(--accent);
+        }
+
+        .branch {
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        .phone {
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        .header-right {
+            text-align: right;
+        }
+
+        .live-badge {
+            background: #22c55e;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 999px;
             font-size: 11px;
             font-weight: bold;
-            animation: pulse 2s infinite;
             display: inline-block;
+            animation: pulse 2s infinite;
         }
+
+        .clock {
+            font-size: 20px;
+            font-weight: bold;
+            color: var(--accent);
+            margin-top: 5px;
+        }
+
+        .last-update {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 3px;
+        }
+
         @keyframes pulse {
             0%, 100% { opacity: 1; }
-            50% { opacity: 0.6; }
+            50% { opacity: 0.5; }
         }
-        .clock { font-size: 20px; font-weight: bold; color: var(--accent); margin-top: 5px; }
-        .last-update { font-size: 10px; color: var(--text-muted); margin-top: 3px; }
-        
-        /* Controls */
+
         .controls {
             display: flex;
             gap: 10px;
             margin-bottom: 20px;
             flex-wrap: wrap;
-            align-items: center;
         }
-        
+
         .control-btn {
             background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
             color: var(--text-secondary);
-            padding: 10px 18px;
-            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            padding: 10px 16px;
+            border-radius: 12px;
             cursor: pointer;
             font-size: 13px;
-            font-family: 'Padauk', sans-serif;
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            gap: 6px;
+            transition: 0.25s ease;
         }
-        .control-btn:hover { 
-            background: var(--accent); 
-            color: white;
-            border-color: var(--accent);
-        }
+
+        .control-btn:hover,
         .control-btn.active {
             background: var(--accent);
-            color: white;
             border-color: var(--accent);
+            color: white;
         }
-        
-        /* Grid View */
-        .grid { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
-            gap: 20px; 
-        }
-        
-        /* List View */
-        .list-view .grid {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-        
-        .list-view .tank-card {
+
+        .grid {
             display: grid;
-            grid-template-columns: auto 1fr auto;
-            gap: 20px;
-            padding: 20px;
-            align-items: center;
-        }
-        
-        .list-view .cylinder-container {
-            width: 80px;
-            height: 120px;
-        }
-        
-        .list-view .tank-info {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        
-        .list-view .stats-grid {
-            display: flex;
+            grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
             gap: 20px;
         }
-        
-        .list-view .stat-box {
-            padding: 10px 15px;
-            min-width: 80px;
-        }
-        
-        /* Tank Card */
-        .tank-card { 
+
+        .tank-card {
             background: var(--bg-card);
-            border-radius: 20px; 
+            border-radius: 22px;
             padding: 20px;
             border: 1px solid var(--border-color);
+            box-shadow: 0 8px 24px var(--shadow);
             position: relative;
             overflow: hidden;
-            transition: transform 0.3s, box-shadow 0.3s;
         }
+
         .tank-card:hover {
             transform: translateY(-3px);
-            box-shadow: 0 15px 35px var(--shadow);
+            transition: 0.25s ease;
         }
-        
-        .tank-header { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            margin-bottom: 15px; 
+
+        .tank-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+            gap: 10px;
         }
-        .tank-number { 
-            background: var(--bg-primary); 
-            padding: 5px 12px; 
-            border-radius: 8px; 
-            font-size: 11px; 
-            color: var(--text-secondary);
-            font-weight: bold;
+
+        .tank-number {
+            background: rgba(148,163,184,0.12);
             border: 1px solid var(--border-color);
-        }
-        .fuel-type { 
-            font-size: 14px; 
+            color: var(--text-secondary);
+            border-radius: 10px;
+            padding: 6px 12px;
+            font-size: 11px;
             font-weight: bold;
-            padding: 5px 12px;
-            border-radius: 8px;
-            color: white;
         }
+
+        .fuel-type {
+            padding: 6px 12px;
+            border-radius: 10px;
+            color: white;
+            font-size: 13px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
         .fuel-type.hsd { background: linear-gradient(135deg, #f59e0b, #d97706); }
         .fuel-type.premium { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
         .fuel-type.ron92 { background: linear-gradient(135deg, #10b981, #059669); }
         .fuel-type.ron95 { background: linear-gradient(135deg, #ef4444, #dc2626); }
-        
-        /* 3D Cylinder Tank */
+
+        .status-dot {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            width: 10px;
+            height: 10px;
+            border-radius: 999px;
+            background: #22c55e;
+            box-shadow: 0 0 10px rgba(34,197,94,0.7);
+        }
+
         .cylinder-container {
             width: 100%;
-            height: 180px;
+            height: 185px;
             display: flex;
             justify-content: center;
             align-items: center;
-            margin: 15px 0;
-            perspective: 500px;
+            margin: 10px 0 18px;
         }
-        
+
         .cylinder {
             width: 120px;
-            height: 160px;
+            height: 165px;
             position: relative;
-            transform-style: preserve-3d;
         }
-        
+
         .cylinder-body {
             position: absolute;
-            width: 100%;
-            height: 100%;
+            inset: 0;
             background: var(--cylinder-bg);
             border: 2px solid var(--cylinder-border);
-            border-radius: 60px / 20px;
+            border-radius: 60px / 18px;
             overflow: hidden;
-            box-shadow: 
-                inset -20px 0 30px rgba(0,0,0,0.3),
-                inset 20px 0 30px rgba(255,255,255,0.05),
-                0 10px 30px rgba(0,0,0,0.3);
+            box-shadow: inset -18px 0 24px rgba(0,0,0,0.22), inset 10px 0 18px rgba(255,255,255,0.05);
         }
-        
+
         .cylinder-fill {
             position: absolute;
-            bottom: 0;
             left: 0;
             right: 0;
-            transition: height 1s ease-out;
-            border-radius: 0 0 58px / 18px;
+            bottom: 0;
+            transition: height 1s ease;
             display: flex;
             align-items: center;
             justify-content: center;
         }
-        
-        .cylinder-fill.level-critical { 
-            background: linear-gradient(0deg, #dc2626 0%, #ef4444 50%, #f87171 100%);
-            box-shadow: 0 0 20px rgba(239,68,68,0.5), inset 0 -10px 20px rgba(0,0,0,0.2);
-        }
-        .cylinder-fill.level-low { 
-            background: linear-gradient(0deg, #d97706 0%, #f59e0b 50%, #fbbf24 100%);
-            box-shadow: 0 0 20px rgba(245,158,11,0.5), inset 0 -10px 20px rgba(0,0,0,0.2);
-        }
-        .cylinder-fill.level-medium { 
-            background: linear-gradient(0deg, #2563eb 0%, #3b82f6 50%, #60a5fa 100%);
-            box-shadow: 0 0 20px rgba(59,130,246,0.5), inset 0 -10px 20px rgba(0,0,0,0.2);
-        }
-        .cylinder-fill.level-high { 
-            background: linear-gradient(0deg, #059669 0%, #10b981 50%, #34d399 100%);
-            box-shadow: 0 0 20px rgba(16,185,129,0.5), inset 0 -10px 20px rgba(0,0,0,0.2);
-        }
-        
-        .cylinder-percent {
-            font-size: 24px;
-            font-weight: bold;
-            color: white;
-            text-shadow: 0 2px 8px rgba(0,0,0,0.5);
-            position: relative;
-            z-index: 5;
-        }
-        
+
+        .level-critical { background: linear-gradient(180deg, #f87171, #dc2626); }
+        .level-low { background: linear-gradient(180deg, #fbbf24, #d97706); }
+        .level-medium { background: linear-gradient(180deg, #60a5fa, #2563eb); }
+        .level-high { background: linear-gradient(180deg, #34d399, #059669); }
+
         .cylinder-top {
             position: absolute;
-            top: -8px;
+            top: -7px;
             left: 50%;
             transform: translateX(-50%);
             width: 100px;
-            height: 16px;
-            background: linear-gradient(180deg, #475569 0%, #334155 100%);
-            border-radius: 50%;
-            border: 2px solid #64748b;
-            z-index: 10;
+            height: 14px;
+            background: #475569;
+            border-radius: 999px;
+            z-index: 5;
         }
-        
+
         .cylinder-bottom {
             position: absolute;
-            bottom: -3px;
+            bottom: -4px;
             left: 50%;
             transform: translateX(-50%);
-            width: 116px;
+            width: 112px;
             height: 12px;
-            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-            border-radius: 50%;
-            z-index: -1;
+            background: rgba(15,23,42,0.6);
+            border-radius: 999px;
         }
-        
-        .cylinder-markers {
-            position: absolute;
-            right: -35px;
-            top: 5px;
-            bottom: 5px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            font-size: 9px;
-            color: var(--text-muted);
-        }
-        
+
         .cylinder-shine {
             position: absolute;
-            top: 10px;
-            left: 15px;
-            width: 20px;
-            height: 80%;
-            background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 100%);
-            border-radius: 10px;
+            top: 12px;
+            left: 18px;
+            width: 18px;
+            height: 120px;
+            border-radius: 999px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.02));
+            z-index: 3;
         }
-        
-        /* Stats Grid */
+
+        .cylinder-percent {
+            color: white;
+            font-weight: bold;
+            font-size: 24px;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.35);
+            z-index: 4;
+        }
+
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-            margin-top: 10px;
+            gap: 10px;
         }
-        
+
         .stat-box {
-            background: var(--bg-primary);
-            padding: 12px 8px;
-            border-radius: 10px;
-            text-align: center;
+            background: rgba(148,163,184,0.08);
             border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 12px 10px;
+            text-align: center;
         }
-        
-        .stat-label { font-size: 10px; color: var(--text-muted); margin-bottom: 4px; }
-        .stat-value { font-size: 16px; font-weight: bold; color: var(--accent); }
-        .stat-value.secondary { color: var(--text-secondary); }
-        
-        /* Status Indicator */
-        .status-dot {
-            position: absolute;
-            top: 12px;
-            right: 12px;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: #22c55e;
-            animation: blink 1.5s infinite;
+
+        .stat-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
         }
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
+
+        .stat-value {
+            font-size: 17px;
+            font-weight: bold;
+            color: var(--accent);
         }
-        
-        /* Admin Link */
+
+        .stat-value.secondary {
+            color: var(--text-secondary);
+        }
+
         .admin-link {
             position: fixed;
-            bottom: 20px;
             right: 20px;
+            bottom: 20px;
+            text-decoration: none;
             background: var(--bg-secondary);
             color: var(--text-secondary);
+            border: 1px solid var(--border-color);
             padding: 12px 18px;
             border-radius: 12px;
-            text-decoration: none;
-            font-size: 13px;
-            border: 1px solid var(--border-color);
-            transition: all 0.3s;
-            z-index: 100;
+            transition: 0.25s ease;
         }
-        .admin-link:hover { 
-            background: var(--accent); 
+
+        .admin-link:hover {
+            background: var(--accent);
             color: white;
             border-color: var(--accent);
         }
 
-        /* Responsive */
-        @media (max-width: 768px) {
-            .header { flex-direction: column; text-align: center; }
-            .header-left { flex-direction: column; }
-            .header-right { text-align: center; }
-            .grid { grid-template-columns: 1fr; }
-            .controls { justify-content: center; }
-            
+        /* Clean List View */
+        .list-view .grid {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .list-view .tank-card {
+            display: grid;
+            grid-template-columns: 110px 1fr 360px;
+            align-items: center;
+            gap: 20px;
+            padding: 18px 20px;
+        }
+
+        .list-view .tank-header {
+            margin-bottom: 8px;
+            justify-content: flex-start;
+            gap: 10px;
+        }
+
+        .list-view .cylinder-container {
+            width: 90px;
+            min-width: 90px;
+            height: 130px;
+            margin: 0 auto;
+        }
+
+        .list-view .cylinder {
+            width: 84px;
+            height: 120px;
+        }
+
+        .list-view .cylinder-top {
+            width: 68px;
+        }
+
+        .list-view .cylinder-bottom {
+            width: 76px;
+        }
+
+        .list-view .cylinder-shine {
+            left: 10px;
+            width: 12px;
+            height: 88px;
+        }
+
+        .list-view .cylinder-percent {
+            font-size: 18px;
+        }
+
+        .list-view .tank-main {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .list-view .tank-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .list-view .tank-title {
+            font-size: 22px;
+            font-weight: bold;
+            color: var(--text-primary);
+        }
+
+        .list-view .tank-sub {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .list-view .stats-grid {
+            grid-template-columns: repeat(3, 1fr);
+            min-width: 320px;
+        }
+
+        @media (max-width: 980px) {
             .list-view .tank-card {
                 grid-template-columns: 1fr;
                 text-align: center;
             }
-            .list-view .cylinder-container {
-                width: 100%;
-                height: 150px;
-            }
-            .list-view .stats-grid {
-                flex-wrap: wrap;
+
+            .list-view .tank-header,
+            .list-view .tank-meta {
                 justify-content: center;
+            }
+
+            .list-view .stats-grid {
+                min-width: 100%;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .header-left {
+                flex-direction: column;
+            }
+
+            .header-right {
+                text-align: center;
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .list-view .stats-grid {
+                grid-template-columns: 1fr;
             }
         }
     </style>
 </head>
 <body>
-
-    <div class="container">
+    <div class="container" id="appContainer">
         <div class="header">
             <div class="header-left">
                 <img id="stLogo" src="[placehold.co](https://placehold.co/100x100/orange/white?text=HTOO)" alt="Logo" class="header-logo">
@@ -424,97 +488,82 @@
                     <p class="phone" id="stPhone">📞 Loading...</p>
                 </div>
             </div>
+
             <div class="header-right">
-                <span class="live-badge">🔴 LIVE</span>
+                <span class="live-badge">LIVE</span>
                 <div class="clock" id="liveClock">--:--:--</div>
                 <div class="last-update">နောက်ဆုံး Update: <span id="lastUpdate">--</span></div>
             </div>
         </div>
 
         <div class="controls">
-            <button class="control-btn active" id="cardViewBtn" onclick="setView('card')">
-                <span>▦</span> Card View
-            </button>
-            <button class="control-btn" id="listViewBtn" onclick="setView('list')">
-                <span>☰</span> List View
-            </button>
+            <button class="control-btn active" id="cardViewBtn" onclick="setView('card')">Card View</button>
+            <button class="control-btn" id="listViewBtn" onclick="setView('list')">List View</button>
             <button class="control-btn" id="themeBtn" onclick="toggleTheme()">
-                <span id="themeIcon">☀️</span> <span id="themeText">Light Mode</span>
+                <span id="themeText">Light Mode</span>
             </button>
         </div>
 
-        <div class="grid" id="tankGrid">
-            <!-- Tanks render here -->
-        </div>
+        <div class="grid" id="tankGrid"></div>
     </div>
 
-    <a href="/admin.html" class="admin-link">⚙️ Admin</a>
+    <a href="/admin.html" class="admin-link">Admin</a>
 
     <script>
         const socket = io();
         let currentView = 'card';
         let currentTheme = localStorage.getItem('theme') || 'dark';
-        
-        // Apply saved theme
+
         if (currentTheme === 'light') {
             document.documentElement.setAttribute('data-theme', 'light');
-            updateThemeButton();
+            document.getElementById('themeText').innerText = 'Dark Mode';
         }
-        
-        // Live Clock
+
         function updateClock() {
             const now = new Date();
             document.getElementById('liveClock').innerText = now.toLocaleTimeString('en-US', {
-                hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
             });
         }
+
         setInterval(updateClock, 1000);
         updateClock();
 
-        // View Toggle
         function setView(view) {
             currentView = view;
-            const container = document.querySelector('.container');
-            
+            const app = document.getElementById('appContainer');
+
             if (view === 'list') {
-                container.classList.add('list-view');
+                app.classList.add('list-view');
                 document.getElementById('listViewBtn').classList.add('active');
                 document.getElementById('cardViewBtn').classList.remove('active');
             } else {
-                container.classList.remove('list-view');
+                app.classList.remove('list-view');
                 document.getElementById('cardViewBtn').classList.add('active');
                 document.getElementById('listViewBtn').classList.remove('active');
             }
+
+            fetchData();
         }
 
-        // Theme Toggle
         function toggleTheme() {
             currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
             localStorage.setItem('theme', currentTheme);
-            
+
             if (currentTheme === 'light') {
                 document.documentElement.setAttribute('data-theme', 'light');
+                document.getElementById('themeText').innerText = 'Dark Mode';
             } else {
                 document.documentElement.removeAttribute('data-theme');
-            }
-            updateThemeButton();
-        }
-        
-        function updateThemeButton() {
-            const icon = document.getElementById('themeIcon');
-            const text = document.getElementById('themeText');
-            if (currentTheme === 'light') {
-                icon.innerText = '🌙';
-                text.innerText = 'Dark Mode';
-            } else {
-                icon.innerText = '☀️';
-                text.innerText = 'Light Mode';
+                document.getElementById('themeText').innerText = 'Light Mode';
             }
         }
 
-        // Fuel class
         function getFuelClass(fuelType) {
-            const ft = fuelType.toLowerCase();
+            const ft = String(fuelType || '').toLowerCase();
             if (ft.includes('premium')) return 'premium';
             if (ft.includes('95')) return 'ron95';
             if (ft.includes('92')) return 'ron92';
@@ -522,7 +571,6 @@
             return 'ron92';
         }
 
-        // Level class
         function getLevelClass(percent) {
             if (percent <= 20) return 'level-critical';
             if (percent <= 40) return 'level-low';
@@ -530,127 +578,132 @@
             return 'level-high';
         }
 
-        // Render tanks
+        function renderCardView(tank, fuelClass, levelClass, percent, currentLiter, maxCapacity) {
+            return `
+                <div class="tank-card">
+                    <div class="status-dot"></div>
+
+                    <div class="tank-header">
+                        <span class="tank-number">TANK ${tank.tankNumber}</span>
+                        <span class="fuel-type ${fuelClass}">${tank.fuelType}</span>
+                    </div>
+
+                    <div class="cylinder-container">
+                        <div class="cylinder">
+                            <div class="cylinder-top"></div>
+                            <div class="cylinder-body">
+                                <div class="cylinder-shine"></div>
+                                <div class="cylinder-fill ${levelClass}" style="height:${percent}%">
+                                    <span class="cylinder-percent">${percent}%</span>
+                                </div>
+                            </div>
+                            <div class="cylinder-bottom"></div>
+                        </div>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <div class="stat-label">အမြင့် (CM)</div>
+                            <div class="stat-value">${tank.currentCM || 'N/A'}</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">လက်ရှိ (L)</div>
+                            <div class="stat-value">${Number(currentLiter).toLocaleString()}</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">အပြည့်ဆံ့ (L)</div>
+                            <div class="stat-value secondary">${Number(maxCapacity).toLocaleString()}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderListView(tank, fuelClass, levelClass, percent, currentLiter, maxCapacity) {
+            return `
+                <div class="tank-card">
+                    <div class="status-dot"></div>
+
+                    <div class="cylinder-container">
+                        <div class="cylinder">
+                            <div class="cylinder-top"></div>
+                            <div class="cylinder-body">
+                                <div class="cylinder-shine"></div>
+                                <div class="cylinder-fill ${levelClass}" style="height:${percent}%">
+                                    <span class="cylinder-percent">${percent}%</span>
+                                </div>
+                            </div>
+                            <div class="cylinder-bottom"></div>
+                        </div>
+                    </div>
+
+                    <div class="tank-main">
+                        <div class="tank-header">
+                            <span class="tank-number">TANK ${tank.tankNumber}</span>
+                            <span class="fuel-type ${fuelClass}">${tank.fuelType}</span>
+                        </div>
+
+                        <div class="tank-meta">
+                            <div class="tank-title">${Number(currentLiter).toLocaleString()} L</div>
+                            <div class="tank-sub">Current Fuel Level</div>
+                        </div>
+
+                        <div class="tank-sub">CM: ${tank.currentCM || 'N/A'} | Capacity: ${Number(maxCapacity).toLocaleString()} L | Fill Rate: ${percent}%</div>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <div class="stat-label">အမြင့် (CM)</div>
+                            <div class="stat-value">${tank.currentCM || 'N/A'}</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">လက်ရှိ (L)</div>
+                            <div class="stat-value">${Number(currentLiter).toLocaleString()}</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">အပြည့်ဆံ့ (L)</div>
+                            <div class="stat-value secondary">${Number(maxCapacity).toLocaleString()}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
         function renderTanks(data) {
-            document.getElementById('stName').innerText = data.station.name || 'Htoo Fuel Station';
-            document.getElementById('stBranch').innerText = 'ဆိုင်ခွဲ - ' + (data.station.branchName || '');
-            document.getElementById('stPhone').innerText = '📞 ' + (data.station.phoneNumber || '');
-            document.getElementById('stLogo').src = data.station.logoUrl || '[placehold.co](https://placehold.co/100x100/orange/white?text=HTOO)';
+            document.getElementById('stName').innerText = data.station?.name || 'Htoo Fuel Station';
+            document.getElementById('stBranch').innerText = 'ဆိုင်ခွဲ - ' + (data.station?.branchName || '');
+            document.getElementById('stPhone').innerText = '📞 ' + (data.station?.phoneNumber || '');
+            document.getElementById('stLogo').src = data.station?.logoUrl || '[placehold.co](https://placehold.co/100x100/orange/white?text=HTOO)';
             document.getElementById('lastUpdate').innerText = data.lastUpdated || '--';
 
             const grid = document.getElementById('tankGrid');
             grid.innerHTML = '';
 
-            data.tanks.forEach(tank => {
+            (data.tanks || []).forEach(tank => {
                 const currentLiter = parseFloat(tank.currentLiter) || 0;
                 const maxCapacity = parseFloat(tank.maxCapacity) || 1;
                 const percent = Math.min(Math.round((currentLiter / maxCapacity) * 100), 100);
-                
                 const fuelClass = getFuelClass(tank.fuelType);
                 const levelClass = getLevelClass(percent);
 
-                if (currentView === 'list') {
-                    grid.innerHTML += `
-                        <div class="tank-card">
-                            <div class="status-dot"></div>
-                            
-                            <div class="cylinder-container">
-                                <div class="cylinder">
-                                    <div class="cylinder-top"></div>
-                                    <div class="cylinder-body">
-                                        <div class="cylinder-shine"></div>
-                                        <div class="cylinder-fill ${levelClass}" style="height: ${percent}%">
-                                            <span class="cylinder-percent">${percent}%</span>
-                                        </div>
-                                    </div>
-                                    <div class="cylinder-bottom"></div>
-                                </div>
-                            </div>
-                            
-                            <div class="tank-info">
-                                <div class="tank-header">
-                                    <span class="tank-number">TANK ${tank.tankNumber}</span>
-                                    <span class="fuel-type ${fuelClass}">${tank.fuelType}</span>
-                                </div>
-                            </div>
-                            
-                            <div class="stats-grid">
-                                <div class="stat-box">
-                                    <div class="stat-label">အမြင့် (CM)</div>
-                                    <div class="stat-value">${tank.currentCM || 'N/A'}</div>
-                                </div>
-                                <div class="stat-box">
-                                    <div class="stat-label">လက်ရှိ (L)</div>
-                                    <div class="stat-value">${Number(currentLiter).toLocaleString()}</div>
-                                </div>
-                                <div class="stat-box">
-                                    <div class="stat-label">အပြည့် (L)</div>
-                                    <div class="stat-value secondary">${Number(maxCapacity).toLocaleString()}</div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    grid.innerHTML += `
-                        <div class="tank-card">
-                            <div class="status-dot"></div>
-                            
-                            <div class="tank-header">
-                                <span class="tank-number">TANK ${tank.tankNumber}</span>
-                                <span class="fuel-type ${fuelClass}">${tank.fuelType}</span>
-                            </div>
-
-                            <div class="cylinder-container">
-                                <div class="cylinder">
-                                    <div class="cylinder-top"></div>
-                                    <div class="cylinder-body">
-                                        <div class="cylinder-shine"></div>
-                                        <div class="cylinder-fill ${levelClass}" style="height: ${percent}%">
-                                            <span class="cylinder-percent">${percent}%</span>
-                                        </div>
-                                    </div>
-                                    <div class="cylinder-bottom"></div>
-                                    <div class="cylinder-markers">
-                                        <span>100%</span>
-                                        <span>75%</span>
-                                        <span>50%</span>
-                                        <span>25%</span>
-                                        <span>0%</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="stats-grid">
-                                <div class="stat-box">
-                                    <div class="stat-label">အမြင့် (CM)</div>
-                                    <div class="stat-value">${tank.currentCM || 'N/A'}</div>
-                                </div>
-                                <div class="stat-box">
-                                    <div class="stat-label">လက်ရှိ (L)</div>
-                                    <div class="stat-value">${Number(currentLiter).toLocaleString()}</div>
-                                </div>
-                                <div class="stat-box">
-                                    <div class="stat-label">အပြည့် (L)</div>
-                                    <div class="stat-value secondary">${Number(maxCapacity).toLocaleString()}</div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }
+                grid.innerHTML += currentView === 'list'
+                    ? renderListView(tank, fuelClass, levelClass, percent, currentLiter, maxCapacity)
+                    : renderCardView(tank, fuelClass, levelClass, percent, currentLiter, maxCapacity);
             });
         }
 
-        // Socket.IO
-        socket.on('dataUpdate', (data) => {
-            console.log('Real-time update');
+        function fetchData() {
+            fetch('/api/data')
+                .then(res => res.json())
+                .then(data => renderTanks(data))
+                .catch(err => console.error(err));
+        }
+
+        socket.on('dataUpdate', data => {
             renderTanks(data);
         });
 
-        // Initial fetch
-        fetch('/api/data')
-            .then(res => res.json())
-            .then(data => renderTanks(data))
-            .catch(err => console.error('Error:', err));
+        fetchData();
     </script>
 </body>
 </html>
