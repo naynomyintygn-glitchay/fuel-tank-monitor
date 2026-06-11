@@ -9,10 +9,7 @@ const mongoose = require('mongoose');
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server, {
-  cors: { origin: "*" }
-});
-
+const io = socketIo(server, { cors: { origin: "*" } });
 const upload = multer({ dest: 'uploads/' });
 
 app.use(express.json());
@@ -21,12 +18,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const ADMIN_PASSWORD = "htoo2024";
 const PORT = process.env.PORT || 3000;
-const MONGODB_URI = process.env.MONGODB_URI;
-
-if (!MONGODB_URI) {
-  console.error("MONGODB_URI is missing in Render Environment Variables");
-  process.exit(1);
-}
+const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://naynomnytygn_db_user:jzEkxwxwsPlR49BKv@htoofuelmonitor.hyczvck.mongodb.net/fuelMonitor?retryWrites=true&w=majority";
 
 const defaultStationData = {
   name: "Htoo Fuel Station",
@@ -84,16 +76,13 @@ async function seedDatabaseIfNeeded() {
       lastUpdated: "မရှိသေးပါ"
     });
   }
-
   const tankCount = await Tank.countDocuments();
   if (tankCount === 0) {
     await Tank.insertMany(defaultTanksData);
   } else {
     for (const tank of defaultTanksData) {
       const exists = await Tank.findOne({ tankNumber: tank.tankNumber });
-      if (!exists) {
-        await Tank.create(tank);
-      }
+      if (!exists) await Tank.create(tank);
     }
   }
 }
@@ -102,14 +91,12 @@ async function loadDatabaseFromMongo() {
   const stationDoc = await Station.findById("station_settings");
   const tanksDocs = await Tank.find({}).sort({ tankNumber: 1 });
 
-  systemDatabase.station = stationDoc
-    ? {
-        name: stationDoc.name,
-        branchName: stationDoc.branchName,
-        phoneNumber: stationDoc.phoneNumber,
-        logoUrl: stationDoc.logoUrl
-      }
-    : defaultStationData;
+  systemDatabase.station = stationDoc ? {
+    name: stationDoc.name,
+    branchName: stationDoc.branchName,
+    phoneNumber: stationDoc.phoneNumber,
+    logoUrl: stationDoc.logoUrl
+  } : defaultStationData;
 
   systemDatabase.tanks = tanksDocs.length
     ? tanksDocs.map(t => ({
@@ -158,24 +145,14 @@ async function updateAndEmit() {
 
 function autoCorrectValue(val) {
   if (val === null || val === undefined || val === "") return null;
-
   let str = String(val).trim();
-
-  if (str.includes("1900-") || (str.includes("T") && str.includes("Z"))) {
-    return null;
-  }
-
+  if (str.includes("1900-") || (str.includes("T") && str.includes("Z"))) return null;
   str = str.replace(/\.{2,}/g, '.');
   str = str.replace(/,/g, '');
   str = str.replace(/[^0-9.-]/g, '');
-
   const parts = str.split('.');
-  if (parts.length > 2) {
-    str = parts[0] + '.' + parts.slice(1).join('');
-  }
-
+  if (parts.length > 2) str = parts[0] + '.' + parts.slice(1).join('');
   if (!str || str === '.' || str === '-') return null;
-
   const num = parseFloat(str);
   return Number.isNaN(num) ? null : num;
 }
@@ -190,18 +167,13 @@ function parseSheetData(matrixData) {
   for (let i = 0; i < Math.min(matrixData.length, 20); i++) {
     const row = matrixData[i];
     if (!row || row.length === 0) continue;
-
     const lineStr = row.map(cell => String(cell || "").toUpperCase()).join(" ");
 
     const capacityMatch = lineStr.match(/\(?\s*(\d{1,3}(?:,?\d{3})*)\s*\)?\s*LITER/i);
-    if (capacityMatch?.[1]) {
-      detectedCapacity = capacityMatch[1].replace(/,/g, '');
-    }
+    if (capacityMatch?.[1]) detectedCapacity = capacityMatch[1].replace(/,/g, '');
 
     const tankMatch = lineStr.match(/TANK\s*(?:NO\.?|NUMBER)?\s*\(?(\d+)\)?/i);
-    if (tankMatch?.[1]) {
-      tankNumber = parseInt(tankMatch[1], 10);
-    }
+    if (tankMatch?.[1]) tankNumber = parseInt(tankMatch[1], 10);
 
     if (lineStr.includes("95 RON")) detectedProduct = "95 RON";
     else if (lineStr.includes("92 RON")) detectedProduct = "92 RON";
@@ -213,43 +185,24 @@ function parseSheetData(matrixData) {
     const row = matrixData[i];
     if (!row || row.length < 3) continue;
 
-    const pairs = [
-      [1, 2],
-      [4, 5],
-      [7, 8]
-    ];
-
-    for (const [cmCol, literCol] of pairs) {
+    for (const [cmCol, literCol] of [[1,2],[4,5],[7,8]]) {
       if (row.length <= literCol) continue;
-
       const cmVal = autoCorrectValue(row[cmCol]);
       const literVal = autoCorrectValue(row[literCol]);
-
-      const isCmValid = cmVal !== null && cmVal > 0 && cmVal < 300;
-      const isLiterValid = literVal !== null && literVal >= 0 && literVal <= 50000;
-
-      if (isCmValid && isLiterValid) {
+      if (cmVal !== null && cmVal > 0 && cmVal < 300 && literVal !== null && literVal >= 0 && literVal <= 50000) {
         lastValidCM = String(cmVal.toFixed(1));
         lastValidLiter = String(Math.round(literVal));
         break;
       }
     }
-
     if (lastValidCM !== "0") break;
   }
 
-  return {
-    cm: lastValidCM,
-    liter: lastValidLiter,
-    capacity: detectedCapacity,
-    fuelType: detectedProduct,
-    tankNumber
-  };
+  return { cm: lastValidCM, liter: lastValidLiter, capacity: detectedCapacity, fuelType: detectedProduct, tankNumber };
 }
 
 app.post('/api/verify-password', (req, res) => {
-  const { password } = req.body;
-  res.json({ success: password === ADMIN_PASSWORD });
+  res.json({ success: req.body.password === ADMIN_PASSWORD });
 });
 
 app.get('/api/data', async (req, res) => {
@@ -257,7 +210,6 @@ app.get('/api/data', async (req, res) => {
     await loadDatabaseFromMongo();
     res.json(systemDatabase);
   } catch (err) {
-    console.error("GET /api/data error:", err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
@@ -265,13 +217,10 @@ app.get('/api/data', async (req, res) => {
 app.post('/api/manual-save', async (req, res) => {
   try {
     const { station, tanks, password } = req.body;
-
     if (password !== ADMIN_PASSWORD) {
       return res.status(401).json({ success: false, message: "Password မှားနေပါသည်" });
     }
-
     systemDatabase.lastUpdated = getNowString();
-
     if (station) {
       systemDatabase.station = {
         ...systemDatabase.station,
@@ -281,7 +230,6 @@ app.post('/api/manual-save', async (req, res) => {
         logoUrl: station.logoUrl ?? systemDatabase.station.logoUrl
       };
     }
-
     if (Array.isArray(tanks)) {
       systemDatabase.tanks = tanks.map(tank => ({
         tankNumber: Number(tank.tankNumber),
@@ -291,12 +239,9 @@ app.post('/api/manual-save', async (req, res) => {
         maxCapacity: String(tank.maxCapacity || "0")
       }));
     }
-
     await updateAndEmit();
-
     res.json({ success: true, data: systemDatabase });
   } catch (err) {
-    console.error("POST /api/manual-save error:", err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
@@ -304,11 +249,9 @@ app.post('/api/manual-save', async (req, res) => {
 app.post('/api/excel-upload', upload.single('excelFile'), async (req, res) => {
   try {
     const { password, tankNumber: selectedTankNum } = req.body;
-
     if (password !== ADMIN_PASSWORD) {
       return res.status(401).json({ success: false, message: "Password မှားနေပါသည်" });
     }
-
     if (!req.file) {
       return res.status(400).json({ success: false, message: "No Excel file uploaded." });
     }
@@ -316,32 +259,23 @@ app.post('/api/excel-upload', upload.single('excelFile'), async (req, res) => {
     const workbook = xlsx.readFile(req.file.path);
     const sheetNames = workbook.SheetNames;
     const tempTanks = [...systemDatabase.tanks];
-
     const sheetsToProcess = [];
 
     if (selectedTankNum && selectedTankNum !== 'all') {
       if (sheetNames.length > 0) {
-        sheetsToProcess.push({
-          sheet: workbook.Sheets[sheetNames[0]],
-          targetTank: parseInt(selectedTankNum, 10)
-        });
+        sheetsToProcess.push({ sheet: workbook.Sheets[sheetNames[0]], targetTank: parseInt(selectedTankNum, 10) });
       }
     } else {
       for (let i = 0; i < Math.min(sheetNames.length, 6); i++) {
-        sheetsToProcess.push({
-          sheet: workbook.Sheets[sheetNames[i]],
-          targetTank: i + 1
-        });
+        sheetsToProcess.push({ sheet: workbook.Sheets[sheetNames[i]], targetTank: i + 1 });
       }
     }
 
     for (const { sheet, targetTank } of sheetsToProcess) {
       const matrixData = xlsx.utils.sheet_to_json(sheet, { header: 1, raw: false });
       const parsed = parseSheetData(matrixData);
-
       const finalTankNum = parsed.tankNumber || targetTank;
       const tankIndex = tempTanks.findIndex(t => Number(t.tankNumber) === Number(finalTankNum));
-
       if (tankIndex !== -1) {
         if (parsed.cm !== "0") tempTanks[tankIndex].currentCM = parsed.cm;
         if (parsed.liter !== "0") tempTanks[tankIndex].currentLiter = parsed.liter;
@@ -352,13 +286,10 @@ app.post('/api/excel-upload', upload.single('excelFile'), async (req, res) => {
 
     systemDatabase.tanks = tempTanks;
     systemDatabase.lastUpdated = getNowString();
-
     await updateAndEmit();
-
     fs.unlink(req.file.path, () => {});
     res.json({ success: true, data: systemDatabase });
   } catch (err) {
-    console.error("POST /api/excel-upload error:", err);
     if (req.file?.path) fs.unlink(req.file.path, () => {});
     res.status(500).json({ success: false, message: err.message });
   }
@@ -373,10 +304,7 @@ mongoose.connect(MONGODB_URI)
     console.log("MongoDB connected");
     await seedDatabaseIfNeeded();
     await loadDatabaseFromMongo();
-
-    server.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-    });
+    server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
   })
   .catch(err => {
     console.error("MongoDB connection error:", err);
